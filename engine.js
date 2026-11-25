@@ -46,6 +46,7 @@ text 用第三人称陈述，只写关于实雪的稳定信息或两人关系的
 直接重复已有信息没有意义，宁少勿滥；确实没有值得记的就只输出 \`fact|1|-\`。`;
 
 const HISTORY_BAD_RE = /吃撑|放你回去|做好觉悟|覚悟して|ご主人様|主人大人|你的狗|君の犬|犬にな|牙だけ|獠牙|去勢|絶育|押し倒|ペット/;
+const WIFE_WORD_RE = /妻子|老婆|奥さん|お嫁さん|俺の妻|我的妻子/;
 
 const TOUCH_TEXT = {
   head: '她伸手摸了摸你的头（手心按在头发上，停了一下才收回去）',
@@ -321,12 +322,13 @@ function historyForApi(channel) {
   const list = h[channel === 'online' ? 'online' : 'offline'];
   return list.map((x) => ({ role: x.role, content: x.text, t: x.t }));
 }
-function recentHistory(turns, channel) {
+function recentHistory(turns, channel, stage = 'A') {
   const h = loadHistory();
   const lines = [];
   h[channel === 'online' ? 'online' : 'offline'].forEach((obj) => {
     if (!obj || !['user', 'assistant'].includes(obj.role) || !obj.text) return;
     if (obj.role === 'assistant' && HISTORY_BAD_RE.test(obj.text)) return;
+    if (obj.role === 'assistant' && stage !== 'C' && WIFE_WORD_RE.test(obj.text)) return;
     let text = obj.text;
     if (obj.role === 'assistant') text = text.replace('雅楽代君', '\u0000NAME\u0000').replace(/君/g, 'あなた').replace(/\u0000NAME\u0000/g, '雅楽代君');
     lines.push({ role: obj.role, content: text });
@@ -354,6 +356,32 @@ function timelineText(cfg) {
   const custom = String(cfg.timeline_custom || '').trim();
   if (custom) return '【时间锚点 · 自定义】' + custom;
   return TIMELINE_BLOCKS[String(cfg.timeline || 'A').toUpperCase()] || TIMELINE_BLOCKS.A;
+}
+function relationStage(cfg) {
+  const custom = String(cfg.timeline_custom || '').trim();
+  let stage = String(cfg.timeline || 'A').toUpperCase();
+  if (custom) {
+    if (/同居|婚后|结婚|夫妻|夫人|夫君|嫁/.test(custom)) stage = 'C';
+    else if (/婚约取消|取消婚约|做朋友|分手/.test(custom)) stage = 'D';
+    else stage = 'A';
+  }
+  return ['A', 'B', 'C', 'D'].includes(stage) ? stage : 'A';
+}
+function relationRules(cfg) {
+  const stage = relationStage(cfg);
+  const historyRule = '旧对话里如果出现过“妻子／老婆／奥さん／お嫁さん”的句子，那是失败的即兴，不要模仿、不要接着玩这个梗。';
+  if (stage === 'C') {
+    return '【关系阶段 · 同居之后（硬规则）】\n' +
+      '实雪已经住进雅楽代家，两人互通过心意；可以偶尔用「奥さん」「俺の妻」这种轻的、带笑的称呼。\n' +
+      '但仍然不是命令或宣告：不要用“作为我的妻子”“你必须当我的妻子”“妻子的位置给你留着”这种把她按进身份的说法。\n' +
+      '她要是否认或害羞，就笑着退半步，不要追着证明。\n' + historyRule;
+  }
+  return '【关系阶段 · 婚前（硬规则，优先于台词习惯和旧对话）】\n' +
+    '现在是 A/B/D 阶段：婚约已经在法律上取消，她没有答应同居、也没有答应结婚。她不是你的妻子，不要把她当成既定身份。\n' +
+    '禁止任何“我的妻子／老婆／夫人／お嫁さん／奥さん”“作为我的妻子”“当我的妻子”“妻子的位置给你留着”的说法。\n' +
+    '「婚約者」可以提，但只能当小时候的旧事或玩笑，说完自己先收；她否认、皱眉或说“谁是你妻子”，就立刻退回朋友距离，不要继续缠。\n' +
+    '婚前的亲近方式是：来店里看她、请客、拿旧事逗她、问她“俺のこと、どう思ってる？”、被拒绝时笑着说“じゃあ、今日はここまでにしとくよ”。\n' +
+    historyRule;
 }
 function manifestDigest() {
   const man = FS.manifest || {};
@@ -421,7 +449,7 @@ function buildSystemBlocks(cfg, channel) {
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
-    readPersona('persona'), scene, timelineText(cfg), readPersona('user'), memText,
+    readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
     manifestDigest(), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
@@ -447,7 +475,7 @@ function buildMessages(cfg, userText, extraSystem, channel) {
   const blocks = buildSystemBlocks(cfg, channel);
   if (extraSystem) blocks.unshift(extraSystem);
   const turns = Number((cfg.prompt || {}).history_turns || 12);
-  const msgs = [{ role: 'system', content: blocks.join('\n\n') }].concat(recentHistory(turns, channel));
+  const msgs = [{ role: 'system', content: blocks.join('\n\n') }].concat(recentHistory(turns, channel, relationStage(cfg)));
   msgs.push({ role: 'user', content: userText });
   const budget = Number((cfg.prompt || {}).max_chars || 24000);
   let total = msgs.reduce((n, m) => n + String(m.content || '').length, 0);
@@ -694,7 +722,7 @@ function parseMemoLines(raw) {
   return items.slice(0, 8);
 }
 async function summarizeRecent(cfg, turns, channel) {
-  const lines = recentHistory(turns, channel);
+  const lines = recentHistory(turns, channel, relationStage(cfg));
   if (!lines.length) return 0;
   const transcript = lines.map((m) => (m.role === 'user' ? '実雪：' : '帳：') + m.content).join('\n');
   try {
