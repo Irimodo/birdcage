@@ -1,0 +1,2231 @@
+{
+  "meta": {
+    "title": "迂回落幕的终章 ─蝶与花的鸟笼─",
+    "character": "雅乐代帳",
+    "engine": "TyranoBuilder / NW.js",
+    "source_exe": "deitsuanogame_zh.exe",
+    "built_at": "2026-11-25 16:22:59",
+    "note": "原包为全年龄恋爱向作品，未发现 18+ 素材；「裏」相关图未纳入。 表情标注按实看图重命名（键名不变）。",
+    "rev": 20,
+    "visual": "近景（816×624 全屏特写）／半身（全身裁到胯）两档，由角色自己判断何时凑近"
+  },
+  "sprite": {
+    "full": {
+      "normal": {
+        "file": "sprite/chou/normal.png",
+        "label": "为难·强颜欢笑",
+        "source": "帳_1.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "sulk": {
+        "file": "sprite/chou/sulk.png",
+        "label": "闹别扭·吃醋",
+        "source": "帳_2.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "down": {
+        "file": "sprite/chou/down.png",
+        "label": "受伤（身体）",
+        "source": "帳_3.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "closed_smile": {
+        "file": "sprite/chou/closed_smile.png",
+        "label": "闭眼微笑",
+        "source": "帳_4.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "surprised": {
+        "file": "sprite/chou/surprised.png",
+        "label": "惊讶·受伤（身体）",
+        "source": "帳_5.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "angry": {
+        "file": "sprite/chou/angry.png",
+        "label": "受伤（身体）·难受",
+        "source": "帳_6.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "grin": {
+        "file": "sprite/chou/grin.png",
+        "label": "咬嘴唇·为难",
+        "source": "帳_7.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "grin_blush": {
+        "file": "sprite/chou/grin_blush.png",
+        "label": "不开心",
+        "source": "帳_7照.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "laugh": {
+        "file": "sprite/chou/laugh.png",
+        "label": "惊讶·不高兴",
+        "source": "帳_8.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "laugh_blush": {
+        "file": "sprite/chou/laugh_blush.png",
+        "label": "大笑·脸红",
+        "source": "帳_8照.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "hurt": {
+        "file": "sprite/chou/hurt.png",
+        "label": "微笑·开心",
+        "source": "帳_9.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "awkward": {
+        "file": "sprite/chou/awkward.png",
+        "label": "为难",
+        "source": "帳_10.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "threat": {
+        "file": "sprite/chou/threat.png",
+        "label": "恐吓·黑化（极稀有）",
+        "source": "帳_11.png",
+        "size": [
+          1085,
+          1535
+        ]
+      },
+      "silhouette": {
+        "file": "sprite/chou/silhouette.png",
+        "label": "恐吓·病娇（极少用）",
+        "source": "帳_シルエット.png",
+        "size": [
+          1085,
+          1535
+        ]
+      }
+    },
+    "bust": {
+      "normal": {
+        "file": "sprite/chou_bust/normal.png",
+        "label": "为难·强颜欢笑",
+        "source": "帳_1.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "sulk": {
+        "file": "sprite/chou_bust/sulk.png",
+        "label": "闹别扭·吃醋",
+        "source": "帳_2.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "down": {
+        "file": "sprite/chou_bust/down.png",
+        "label": "受伤（身体）",
+        "source": "帳_3.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "closed_smile": {
+        "file": "sprite/chou_bust/closed_smile.png",
+        "label": "闭眼微笑",
+        "source": "帳_4.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "surprised": {
+        "file": "sprite/chou_bust/surprised.png",
+        "label": "惊讶·受伤（身体）",
+        "source": "帳_5.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "angry": {
+        "file": "sprite/chou_bust/angry.png",
+        "label": "受伤（身体）·难受",
+        "source": "帳_6.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "grin": {
+        "file": "sprite/chou_bust/grin.png",
+        "label": "咬嘴唇·为难",
+        "source": "帳_7.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "grin_blush": {
+        "file": "sprite/chou_bust/grin_blush.png",
+        "label": "不开心",
+        "source": "帳_7照.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "laugh": {
+        "file": "sprite/chou_bust/laugh.png",
+        "label": "惊讶·不高兴",
+        "source": "帳_8.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "laugh_blush": {
+        "file": "sprite/chou_bust/laugh_blush.png",
+        "label": "大笑·脸红",
+        "source": "帳_8照.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "hurt": {
+        "file": "sprite/chou_bust/hurt.png",
+        "label": "微笑·开心",
+        "source": "帳_9.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "awkward": {
+        "file": "sprite/chou_bust/awkward.png",
+        "label": "为难",
+        "source": "帳_10.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "threat": {
+        "file": "sprite/chou_bust/threat.png",
+        "label": "恐吓·黑化（极稀有）",
+        "source": "帳_11.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      },
+      "silhouette": {
+        "file": "sprite/chou_bust/silhouette.png",
+        "label": "恐吓·病娇（极少用）",
+        "source": "帳_シルエット.png（上半身裁切）",
+        "size": [
+          751,
+          685
+        ]
+      }
+    },
+    "near": {
+      "normal": {
+        "file": "sprite/chou_near/normal.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "20.png",
+        "label": "为难·强颜欢笑"
+      },
+      "sulk": {
+        "file": "sprite/chou_near/sulk.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "14.png",
+        "label": "闹别扭·吃醋"
+      },
+      "down": {
+        "file": "sprite/chou_near/down.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "17.png",
+        "label": "受伤（身体）"
+      },
+      "closed_smile": {
+        "file": "sprite/chou_near/closed_smile.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up4.png",
+        "label": "闭眼微笑"
+      },
+      "surprised": {
+        "file": "sprite/chou_near/surprised.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "22.png",
+        "label": "惊讶·受伤（身体）"
+      },
+      "angry": {
+        "file": "sprite/chou_near/angry.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "12.png",
+        "label": "受伤（身体）·难受"
+      },
+      "grin": {
+        "file": "sprite/chou_near/grin.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "21.png",
+        "label": "咬嘴唇·为难"
+      },
+      "grin_blush": {
+        "file": "sprite/chou_near/grin_blush.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up6.png",
+        "label": "不开心"
+      },
+      "laugh": {
+        "file": "sprite/chou_near/laugh.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up6.png",
+        "label": "惊讶·不高兴"
+      },
+      "laugh_blush": {
+        "file": "sprite/chou_near/laugh_blush.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up8照.png",
+        "label": "大笑·脸红"
+      },
+      "hurt": {
+        "file": "sprite/chou_near/hurt.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up7.png",
+        "label": "微笑·开心"
+      },
+      "awkward": {
+        "file": "sprite/chou_near/awkward.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "10.png",
+        "label": "为难"
+      },
+      "threat": {
+        "file": "sprite/chou_near/threat.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up11.png",
+        "label": "恐吓·黑化（极稀有）"
+      },
+      "silhouette": {
+        "file": "sprite/chou_near/silhouette.png",
+        "size": [
+          816,
+          624
+        ],
+        "source": "帳up11.png",
+        "label": "恐吓·病娇（极少用）"
+      }
+    }
+  },
+  "bg": [
+    {
+      "id": "bg_001",
+      "file": "bg/帳の部屋.jpg",
+      "label": "帐的房间",
+      "source": "帳の部屋.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_002",
+      "file": "bg/雅楽代邸リビング夜.png",
+      "label": "雅乐代邸·起居室（夜）",
+      "source": "雅楽代邸リビング夜.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_003",
+      "file": "bg/雅楽代邸リビング昼.png",
+      "label": "雅乐代邸·起居室（昼）",
+      "source": "雅楽代邸リビング昼.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_004",
+      "file": "bg/雅樂代邸庭.png",
+      "label": "雅乐代邸·庭院",
+      "source": "雅樂代邸庭.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_005",
+      "file": "bg/雅樂代邸中庭.png",
+      "label": "雅乐代邸·中庭",
+      "source": "雅樂代邸中庭.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_006",
+      "file": "bg/雅楽代家玄関.jpg",
+      "label": "雅乐代家·玄关",
+      "source": "雅楽代家玄関.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_007",
+      "file": "bg/雅樂代邸外観.png",
+      "label": "雅乐代邸·外观",
+      "source": "雅樂代邸外観.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_008",
+      "file": "bg/衣装部屋.png",
+      "label": "衣装间",
+      "source": "衣装部屋.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_009",
+      "file": "bg/純喫茶.jpg",
+      "label": "纯喫茶店",
+      "source": "純喫茶.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_010",
+      "file": "bg/カフェー.png",
+      "label": "咖啡厅",
+      "source": "カフェー.png",
+      "curated": true,
+      "size": [
+        838,
+        629
+      ]
+    },
+    {
+      "id": "bg_011",
+      "file": "bg/カフェー窓際.jpg",
+      "label": "咖啡厅·窗边",
+      "source": "カフェー窓際.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_012",
+      "file": "bg/街_夜.jpg",
+      "label": "街道·夜",
+      "source": "街_夜.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_013",
+      "file": "bg/街_夕焼け.jpg",
+      "label": "街道·黄昏",
+      "source": "街_夕焼け.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_014",
+      "file": "bg/街_雨.jpg",
+      "label": "街道·雨",
+      "source": "街_雨.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_015",
+      "file": "bg/街_昼.jpg",
+      "label": "街道·昼",
+      "source": "街_昼.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_016",
+      "file": "bg/路地.jpg",
+      "label": "小巷",
+      "source": "路地.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_017",
+      "file": "bg/電話.png",
+      "label": "电话（夜）",
+      "source": "電話.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_018",
+      "file": "bg/百貨店店内.png",
+      "label": "百货店·店内",
+      "source": "百貨店店内.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_019",
+      "file": "bg/百貨店廊下.png",
+      "label": "百货店·走廊",
+      "source": "百貨店廊下.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_020",
+      "file": "bg/レストラン.png",
+      "label": "西餐厅",
+      "source": "レストラン.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_021",
+      "file": "bg/バー.jpg",
+      "label": "酒吧",
+      "source": "バー.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_022",
+      "file": "bg/映画館.png",
+      "label": "电影院",
+      "source": "映画館.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_023",
+      "file": "bg/東京駅.png",
+      "label": "东京站",
+      "source": "東京駅.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_024",
+      "file": "bg/夜空.png",
+      "label": "夜空",
+      "source": "夜空.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_025",
+      "file": "bg/星空.jpg",
+      "label": "星空",
+      "source": "星空.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_026",
+      "file": "bg/花火.png",
+      "label": "烟火",
+      "source": "花火.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_027",
+      "file": "bg/朝焼け.png",
+      "label": "朝霞",
+      "source": "朝焼け.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_028",
+      "file": "bg/夕日.png",
+      "label": "夕阳",
+      "source": "夕日.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_029",
+      "file": "bg/海.png",
+      "label": "海",
+      "source": "海.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_030",
+      "file": "bg/とりかご.png",
+      "label": "鸟笼",
+      "source": "とりかご.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_031",
+      "file": "bg/椿のイメージ.png",
+      "label": "椿（意象）",
+      "source": "椿のイメージ.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_032",
+      "file": "bg/手紙.png",
+      "label": "信",
+      "source": "手紙.png",
+      "curated": true,
+      "size": [
+        1024,
+        783
+      ]
+    },
+    {
+      "id": "bg_033",
+      "file": "bg/プレゼント.jpg",
+      "label": "礼物",
+      "source": "プレゼント.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_034",
+      "file": "bg/ワイン.jpg",
+      "label": "葡萄酒",
+      "source": "ワイン.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_035",
+      "file": "bg/主人公部屋.jpg",
+      "label": "主人房",
+      "source": "主人公部屋.jpg",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_036",
+      "file": "bg/アパート夜.png",
+      "label": "公寓（夜）",
+      "source": "アパート夜.png",
+      "curated": true,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_040",
+      "file": "bg/IMG_2547.JPG",
+      "label": "照片素材",
+      "source": "IMG_2547.JPG",
+      "curated": false,
+      "size": [
+        640,
+        480
+      ]
+    },
+    {
+      "id": "bg_041",
+      "file": "bg/haikei.jpg",
+      "label": "背景素材",
+      "source": "haikei.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_042",
+      "file": "bg/kagi.jpg",
+      "label": "钥匙",
+      "source": "kagi.jpg",
+      "curated": false,
+      "size": [
+        640,
+        480
+      ]
+    },
+    {
+      "id": "bg_043",
+      "file": "bg/rouka.jpg",
+      "label": "走廊",
+      "source": "rouka.jpg",
+      "curated": false,
+      "size": [
+        1280,
+        800
+      ]
+    },
+    {
+      "id": "bg_046",
+      "file": "bg/お風呂.jpg",
+      "label": "浴室",
+      "source": "お風呂.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_047",
+      "file": "bg/どこかの窓辺.png",
+      "label": "某处的窗边",
+      "source": "どこかの窓辺.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_048",
+      "file": "bg/アパート昼.png",
+      "label": "公寓（昼）",
+      "source": "アパート昼.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_049",
+      "file": "bg/アパート近く_夜.jpg",
+      "label": "公寓附近（夜）",
+      "source": "アパート近く_夜.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_050",
+      "file": "bg/カフェテラス.jpg",
+      "label": "咖啡厅露台",
+      "source": "カフェテラス.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_051",
+      "file": "bg/カフェー2.png",
+      "label": "咖啡厅2",
+      "source": "カフェー2.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_052",
+      "file": "bg/カフェー2夜.png",
+      "label": "咖啡厅2·夜",
+      "source": "カフェー2夜.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_053",
+      "file": "bg/カフェー玄関.png",
+      "label": "咖啡厅·门口",
+      "source": "カフェー玄関.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_054",
+      "file": "bg/カフェー玄関夜.png",
+      "label": "咖啡厅·门口（夜）",
+      "source": "カフェー玄関夜.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_055",
+      "file": "bg/カフェー裏.png",
+      "label": "咖啡厅·后巷",
+      "source": "カフェー裏.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_056",
+      "file": "bg/ケイの部屋.jpg",
+      "label": "九重的房间",
+      "source": "ケイの部屋.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_057",
+      "file": "bg/ケイの部屋_窓際.png",
+      "label": "九重的房间·窗边",
+      "source": "ケイの部屋_窓際.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_058",
+      "file": "bg/ケイの部屋縁側.png",
+      "label": "九重的房间·缘侧",
+      "source": "ケイの部屋縁側.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_059",
+      "file": "bg/タクシー.png",
+      "label": "タクシー",
+      "source": "タクシー.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_060",
+      "file": "bg/バーぼかし.png",
+      "label": "酒吧（虚化）",
+      "source": "バーぼかし.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_061",
+      "file": "bg/ワイン注ぐ.jpg",
+      "label": "斟酒",
+      "source": "ワイン注ぐ.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_073",
+      "file": "bg/事務所.png",
+      "label": "事务所",
+      "source": "事務所.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_084",
+      "file": "bg/学校.png",
+      "label": "学校",
+      "source": "学校.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_085",
+      "file": "bg/学校廊下.png",
+      "label": "学校走廊",
+      "source": "学校廊下.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_086",
+      "file": "bg/小学校教室.png",
+      "label": "小学教室",
+      "source": "小学校教室.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_098",
+      "file": "bg/平井家.png",
+      "label": "平井家",
+      "source": "平井家.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_099",
+      "file": "bg/引き出し.JPG",
+      "label": "抽屉",
+      "source": "引き出し.JPG",
+      "curated": false,
+      "size": [
+        640,
+        480
+      ]
+    },
+    {
+      "id": "bg_103",
+      "file": "bg/本.jpg",
+      "label": "书",
+      "source": "本.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_104",
+      "file": "bg/注射のイメージ.png",
+      "label": "注射（意象）",
+      "source": "注射のイメージ.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_105",
+      "file": "bg/注射のイメージ2.png",
+      "label": "注射（意象2）",
+      "source": "注射のイメージ2.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_106",
+      "file": "bg/田舎.png",
+      "label": "乡间",
+      "source": "田舎.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_107",
+      "file": "bg/白.png",
+      "label": "纯白",
+      "source": "白.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_108",
+      "file": "bg/百貨店.png",
+      "label": "百货店",
+      "source": "百貨店.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_109",
+      "file": "bg/百貨店ショーウィンドウ.png",
+      "label": "百货店·橱窗",
+      "source": "百貨店ショーウィンドウ.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_110",
+      "file": "bg/百貨店本屋.png",
+      "label": "百货店·书店",
+      "source": "百貨店本屋.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_111",
+      "file": "bg/真っ暗.png",
+      "label": "漆黑",
+      "source": "真っ暗.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_115",
+      "file": "bg/蔵の中.png",
+      "label": "仓库内",
+      "source": "蔵の中.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_116",
+      "file": "bg/街2.png",
+      "label": "街2",
+      "source": "街2.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_117",
+      "file": "bg/街2夜.png",
+      "label": "街2·夜",
+      "source": "街2夜.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_118",
+      "file": "bg/街3.png",
+      "label": "街3",
+      "source": "街3.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_119",
+      "file": "bg/街3夜.png",
+      "label": "街3·夜",
+      "source": "街3夜.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_120",
+      "file": "bg/衣装部屋ぼかし.png",
+      "label": "衣装间（虚化）",
+      "source": "衣装部屋ぼかし.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_121",
+      "file": "bg/袋小路.jpg",
+      "label": "死巷",
+      "source": "袋小路.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_122",
+      "file": "bg/路地裏新.png",
+      "label": "后巷",
+      "source": "路地裏新.png",
+      "curated": false,
+      "size": [
+        1920,
+        1285
+      ]
+    },
+    {
+      "id": "bg_123",
+      "file": "bg/路地裏新ぼかし.png",
+      "label": "后巷（虚化）",
+      "source": "路地裏新ぼかし.png",
+      "curated": false,
+      "size": [
+        1920,
+        1285
+      ]
+    },
+    {
+      "id": "bg_124",
+      "file": "bg/車輪.PNG",
+      "label": "车轮",
+      "source": "車輪.PNG",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_125",
+      "file": "bg/酒屋.png",
+      "label": "酒屋",
+      "source": "酒屋.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_130",
+      "file": "bg/雅楽代家.jpg",
+      "label": "雅乐代家·外观",
+      "source": "雅楽代家.jpg",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_131",
+      "file": "bg/青空.png",
+      "label": "晴空",
+      "source": "青空.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "bg_132",
+      "file": "bg/高校教室.png",
+      "label": "高中教室",
+      "source": "高校教室.png",
+      "curated": false,
+      "size": [
+        816,
+        624
+      ]
+    }
+  ],
+  "cg": [
+    {
+      "id": "cg_letter",
+      "file": "cg/cg_letter.jpg",
+      "label": "深夜写信的帐",
+      "source": "帳3　修正.jpg",
+      "adult": false,
+      "size": [
+        1418,
+        1080
+      ]
+    },
+    {
+      "id": "cg_garden",
+      "file": "cg/cg_garden.jpg",
+      "label": "庭前并肩（幼时两人）",
+      "source": "帳5-1.jpg",
+      "adult": false,
+      "size": [
+        1415,
+        1080
+      ]
+    },
+    {
+      "id": "cg_shoulder",
+      "file": "cg/cg_shoulder.jpg",
+      "label": "肩头的帐·咬痕",
+      "source": "帳6-2.jpg",
+      "adult": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "cg_street",
+      "file": "cg/cg_street.jpg",
+      "label": "街角牵手的两人",
+      "source": "帳7.jpg",
+      "adult": false,
+      "size": [
+        1416,
+        1080
+      ]
+    },
+    {
+      "id": "cg_kiss",
+      "file": "cg/cg_kiss.jpg",
+      "label": "吻",
+      "source": "帳_スチル1.jpg",
+      "adult": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "cg_bite",
+      "file": "cg/cg_bite.jpg",
+      "label": "咬住手腕的帐",
+      "source": "帳スチル4.jpg",
+      "adult": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "cg_night",
+      "file": "cg/cg_night.jpg",
+      "label": "灯下写信（远景）",
+      "source": "帳スチル３.jpg",
+      "adult": false,
+      "size": [
+        816,
+        624
+      ]
+    },
+    {
+      "id": "cg_book",
+      "file": "cg/cg_book.png",
+      "label": "蓝色手帐（信物）",
+      "source": "帳.png",
+      "adult": false,
+      "size": [
+        238,
+        282
+      ]
+    },
+    {
+      "id": "cg_embrace",
+      "file": "cg/cg_embrace.jpg",
+      "label": "相拥",
+      "source": "帳1-2修正.jpg",
+      "adult": false,
+      "size": [
+        1409,
+        1080
+      ]
+    },
+    {
+      "id": "cg_reunion",
+      "file": "cg/cg_reunion.jpg",
+      "label": "重逢·笑着的两人",
+      "source": "帳5-2.jpg",
+      "adult": false,
+      "size": [
+        816,
+        623
+      ]
+    },
+    {
+      "id": "cg_profile",
+      "file": "cg/cg_profile.jpg",
+      "label": "帐·立绘特写",
+      "source": "帳_スチル2.jpg",
+      "adult": false,
+      "size": [
+        816,
+        624
+      ]
+    }
+  ],
+  "bgm": [
+    {
+      "id": "bgm_01",
+      "file": "bgm/cafeyuuga_bgm_maoudamashii_piano30.ogg",
+      "label": "咖啡厅·优雅",
+      "source": "cafeyuuga_bgm_maoudamashii_piano30.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_02",
+      "file": "bgm/dear　n46.mp3",
+      "label": "dear",
+      "source": "dear　n46.mp3",
+      "size": null
+    },
+    {
+      "id": "bgm_03",
+      "file": "bgm/music.ogg",
+      "label": "music",
+      "source": "music.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_04",
+      "file": "bgm/n103.mp3",
+      "label": "n103",
+      "source": "n103.mp3",
+      "size": null
+    },
+    {
+      "id": "bgm_05",
+      "file": "bgm/n103_(online-audio-converter.com).ogg",
+      "label": "n103_(online-audio-converter.com)",
+      "source": "n103_(online-audio-converter.com).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_06",
+      "file": "bgm/tuiokuBGM/dear　n46.mp3",
+      "label": "dear　n46",
+      "source": "tuiokuBGM/dear　n46.mp3",
+      "size": null
+    },
+    {
+      "id": "bgm_07",
+      "file": "bgm/tuiokuBGM/dear　n46_(online-audio-converter.com).ogg",
+      "label": "dear（追忆）",
+      "source": "tuiokuBGM/dear　n46_(online-audio-converter.com).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_08",
+      "file": "bgm/tuiokuBGM/それでも・・.ogg",
+      "label": "即使如此",
+      "source": "tuiokuBGM/それでも・・.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_09",
+      "file": "bgm/tuiokuBGM/不思議な森(Mysterious_forest).ogg",
+      "label": "不可思议的森林",
+      "source": "tuiokuBGM/不思議な森(Mysterious_forest).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_10",
+      "file": "bgm/tuiokuBGM/不穏(こっけ).ogg",
+      "label": "不祥（追忆）",
+      "source": "tuiokuBGM/不穏(こっけ).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_11",
+      "file": "bgm/tuiokuBGM/壊れゆく心n131.ogg",
+      "label": "壊れゆく心n131",
+      "source": "tuiokuBGM/壊れゆく心n131.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_12",
+      "file": "bgm/tuiokuBGM/夜桜小路n39.ogg",
+      "label": "夜樱小路",
+      "source": "tuiokuBGM/夜桜小路n39.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_13",
+      "file": "bgm/tuiokuBGM/夢見る世界(Dreaming_world).ogg",
+      "label": "梦见的世界",
+      "source": "tuiokuBGM/夢見る世界(Dreaming_world).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_14",
+      "file": "bgm/tuiokuBGM/天地に咲く花n61.ogg",
+      "label": "天地间绽放的花",
+      "source": "tuiokuBGM/天地に咲く花n61.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_15",
+      "file": "bgm/tuiokuBGM/星の言葉k14.ogg",
+      "label": "星之言语",
+      "source": "tuiokuBGM/星の言葉k14.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_16",
+      "file": "bgm/tuiokuBGM/灯台守の夢f1.ogg",
+      "label": "灯台守の夢f1",
+      "source": "tuiokuBGM/灯台守の夢f1.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_17",
+      "file": "bgm/tuiokuBGM/無礼講n6.ogg",
+      "label": "无礼讲",
+      "source": "tuiokuBGM/無礼講n6.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_18",
+      "file": "bgm/tuiokuBGM/華と少女o6.ogg",
+      "label": "華と少女o6",
+      "source": "tuiokuBGM/華と少女o6.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_19",
+      "file": "bgm/tuiokuBGM/運命の星.ogg",
+      "label": "命运之星",
+      "source": "tuiokuBGM/運命の星.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_20",
+      "file": "bgm/いつも通り@special_to_me.ogg",
+      "label": "一如往常",
+      "source": "いつも通り@special_to_me.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_21",
+      "file": "bgm/おねむ魔王魂__ピアノ18.ogg",
+      "label": "困倦",
+      "source": "おねむ魔王魂__ピアノ18.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_22",
+      "file": "bgm/エピローグ、落ち着いた場面など@悠久の絆.ogg",
+      "label": "终章·悠久的羁绊",
+      "source": "エピローグ、落ち着いた場面など@悠久の絆.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_23",
+      "file": "bgm/カフェー優雅bgm_maoudamashii_piano30.ogg",
+      "label": "咖啡厅·优雅",
+      "source": "カフェー優雅bgm_maoudamashii_piano30.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_24",
+      "file": "bgm/ギャグ調@恋の予感.ogg",
+      "label": "玩笑·恋的预感",
+      "source": "ギャグ調@恋の予感.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_25",
+      "file": "bgm/クライマックス@永久の輪廻.ogg",
+      "label": "高潮·永远的轮回",
+      "source": "クライマックス@永久の輪廻.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_26",
+      "file": "bgm/ゲームオーバー.ogg",
+      "label": "GAME OVER",
+      "source": "ゲームオーバー.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_27",
+      "file": "bgm/タイトルn103_(online-audio-converter.com).ogg",
+      "label": "标题曲",
+      "source": "タイトルn103_(online-audio-converter.com).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_28",
+      "file": "bgm/不安な夜bgm_maoudamashii_healing04.ogg",
+      "label": "不安的夜",
+      "source": "不安な夜bgm_maoudamashii_healing04.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_29",
+      "file": "bgm/不穏ピアノbgm_maoudamashii_piano35.ogg",
+      "label": "不祥的钢琴",
+      "source": "不穏ピアノbgm_maoudamashii_piano35.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_30",
+      "file": "bgm/八尋のbar@bluemooon.ogg",
+      "label": "八寻的酒吧",
+      "source": "八尋のbar@bluemooon.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_31",
+      "file": "bgm/切ない恋愛@moment~オルゴール~.ogg",
+      "label": "酸涩的恋心（八音盒）",
+      "source": "切ない恋愛@moment~オルゴール~.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_32",
+      "file": "bgm/喧嘩してるとき@moment.ogg",
+      "label": "争执的时候",
+      "source": "喧嘩してるとき@moment.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_33",
+      "file": "bgm/壊れゆく心n131.ogg",
+      "label": "崩塌的心",
+      "source": "壊れゆく心n131.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_34",
+      "file": "bgm/壮大な不穏@紅月~あかつき~.ogg",
+      "label": "宏大的不祥·红月",
+      "source": "壮大な不穏@紅月~あかつき~.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_35",
+      "file": "bgm/奇妙な儀式.ogg",
+      "label": "奇妙的仪式",
+      "source": "奇妙な儀式.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_36",
+      "file": "bgm/帳の日記@トライアングルな関係.ogg",
+      "label": "帐的日记",
+      "source": "帳の日記@トライアングルな関係.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_37",
+      "file": "bgm/怪しい@鉄の兵隊.ogg",
+      "label": "诡异·铁之兵队",
+      "source": "怪しい@鉄の兵隊.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_38",
+      "file": "bgm/恋愛中@きみとであえたことが.ogg",
+      "label": "恋爱中·遇见你真好",
+      "source": "恋愛中@きみとであえたことが.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_39",
+      "file": "bgm/悲しい時@セピア色の思い出.ogg",
+      "label": "悲伤·褪色的回忆",
+      "source": "悲しい時@セピア色の思い出.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_40",
+      "file": "bgm/旅立ち.ogg",
+      "label": "启程",
+      "source": "旅立ち.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_41",
+      "file": "bgm/日中穏やか魔王魂__アコースティック39.ogg",
+      "label": "白昼的安稳",
+      "source": "日中穏やか魔王魂__アコースティック39.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_42",
+      "file": "bgm/日本開花n111.ogg",
+      "label": "日本开花",
+      "source": "日本開花n111.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_43",
+      "file": "bgm/死後の世界.ogg",
+      "label": "死后世界",
+      "source": "死後の世界.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_44",
+      "file": "bgm/泥棒d9_(online-audio-converter.com).ogg",
+      "label": "小偷",
+      "source": "泥棒d9_(online-audio-converter.com).ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_45",
+      "file": "bgm/灯台守の夢f1.ogg",
+      "label": "灯塔看守人的梦",
+      "source": "灯台守の夢f1.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_46",
+      "file": "bgm/穏やかな期待魔王魂__アコースティック50.ogg",
+      "label": "安稳的期待",
+      "source": "穏やかな期待魔王魂__アコースティック50.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_47",
+      "file": "bgm/竜の嘶きn56.ogg",
+      "label": "龙之嘶鸣",
+      "source": "竜の嘶きn56.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_48",
+      "file": "bgm/純喫茶@Let-It-Happen.ogg",
+      "label": "纯喫茶（咖啡店日常）",
+      "source": "純喫茶@Let-It-Happen.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_49",
+      "file": "bgm/花よ川よ＿回想.ogg",
+      "label": "花啊川啊（回想）",
+      "source": "花よ川よ＿回想.ogg",
+      "size": null
+    },
+    {
+      "id": "bgm_50",
+      "file": "bgm/華と少女o6.mp3",
+      "label": "華と少女o6",
+      "source": "華と少女o6.mp3",
+      "size": null
+    },
+    {
+      "id": "bgm_51",
+      "file": "bgm/謀略の間.ogg",
+      "label": "谋略之室",
+      "source": "謀略の間.ogg",
+      "size": null
+    }
+  ],
+  "ui": [
+    {
+      "id": "ui_logo",
+      "file": "ui/ui_logo.png",
+      "label": "作品logo",
+      "size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "id": "ui_watch",
+      "file": "ui/ui_watch.png",
+      "label": "怀表",
+      "size": [
+        625,
+        625
+      ]
+    }
+  ],
+  "guests": {
+    "kagami": {
+      "name": "平井 鏡太郎",
+      "short": "鏡太郎",
+      "full": {
+        "calm": {
+          "file": "sprite/kagami/calm.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "10.png",
+          "label": "平静·轻蔑微笑"
+        },
+        "smile": {
+          "file": "sprite/kagami/smile.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "6.png",
+          "label": "冷笑"
+        },
+        "cold": {
+          "file": "sprite/kagami/cold.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "15.png",
+          "label": "压低帽檐·不快"
+        },
+        "awkward": {
+          "file": "sprite/kagami/awkward.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "4.png",
+          "label": "微笑·敷衍"
+        },
+        "surprised": {
+          "file": "sprite/kagami/surprised.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "2.png",
+          "label": "皱眉·不悦"
+        },
+        "grin": {
+          "file": "sprite/kagami/grin.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "8.png",
+          "label": "闭眼笑"
+        }
+      },
+      "bust": {
+        "calm": {
+          "file": "sprite/kagami_bust/calm.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "10.png",
+          "label": "平静·轻蔑微笑"
+        },
+        "smile": {
+          "file": "sprite/kagami_bust/smile.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "6.png",
+          "label": "冷笑"
+        },
+        "cold": {
+          "file": "sprite/kagami_bust/cold.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "15.png",
+          "label": "压低帽檐·不快"
+        },
+        "awkward": {
+          "file": "sprite/kagami_bust/awkward.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "4.png",
+          "label": "微笑·敷衍"
+        },
+        "surprised": {
+          "file": "sprite/kagami_bust/surprised.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "2.png",
+          "label": "皱眉·不悦"
+        },
+        "grin": {
+          "file": "sprite/kagami_bust/grin.png",
+          "size": [
+            785,
+            670
+          ],
+          "source": "8.png",
+          "label": "闭眼笑"
+        }
+      },
+      "near": {
+        "calm": {
+          "file": "sprite/kagami_near/calm.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP1.png",
+          "label": "平静·轻蔑微笑"
+        },
+        "smile": {
+          "file": "sprite/kagami_near/smile.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP2.png",
+          "label": "冷笑"
+        },
+        "cold": {
+          "file": "sprite/kagami_near/cold.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP3.png",
+          "label": "压低帽檐·不快"
+        },
+        "awkward": {
+          "file": "sprite/kagami_near/awkward.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP4.png",
+          "label": "微笑·敷衍"
+        },
+        "surprised": {
+          "file": "sprite/kagami_near/surprised.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP5.png",
+          "label": "皱眉·不悦"
+        },
+        "grin": {
+          "file": "sprite/kagami_near/grin.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP7.png",
+          "label": "闭眼笑"
+        },
+        "silhouette": {
+          "file": "sprite/kagami_near/silhouette.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP13.png",
+          "label": "阴影"
+        },
+        "threat": {
+          "file": "sprite/kagami_near/threat.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "鏡太郎UP14.png",
+          "label": "压迫·黑脸"
+        }
+      },
+      "order": [
+        "calm",
+        "smile",
+        "cold",
+        "awkward",
+        "surprised",
+        "grin"
+      ]
+    },
+    "father": {
+      "name": "雅樂代 暁",
+      "short": "暁",
+      "full": {
+        "calm": {
+          "file": "sprite/father/calm.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "暁1.png",
+          "label": "平静"
+        },
+        "smile": {
+          "file": "sprite/father/smile.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "暁2.png",
+          "label": "微笑"
+        },
+        "warm": {
+          "file": "sprite/father/warm.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "暁3.png",
+          "label": "闭眼笑"
+        },
+        "stern": {
+          "file": "sprite/father/stern.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "暁4.png",
+          "label": "严肃"
+        }
+      },
+      "bust": {
+        "calm": {
+          "file": "sprite/father_bust/calm.png",
+          "size": [
+            422,
+            700
+          ],
+          "source": "暁1.png",
+          "label": "平静"
+        },
+        "smile": {
+          "file": "sprite/father_bust/smile.png",
+          "size": [
+            422,
+            700
+          ],
+          "source": "暁2.png",
+          "label": "微笑"
+        },
+        "warm": {
+          "file": "sprite/father_bust/warm.png",
+          "size": [
+            422,
+            700
+          ],
+          "source": "暁3.png",
+          "label": "闭眼笑"
+        },
+        "stern": {
+          "file": "sprite/father_bust/stern.png",
+          "size": [
+            422,
+            700
+          ],
+          "source": "暁4.png",
+          "label": "严肃"
+        }
+      },
+      "near": {
+        "calm": {
+          "file": "sprite/father_near/calm.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "3up.png",
+          "label": "近景·平静"
+        }
+      },
+      "order": [
+        "calm",
+        "smile",
+        "warm",
+        "stern"
+      ]
+    },
+    "mother": {
+      "name": "雅樂代 香穗留",
+      "short": "香穗留",
+      "full": {
+        "calm": {
+          "file": "sprite/mother/calm.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "かほる1.png",
+          "label": "平静"
+        },
+        "smile": {
+          "file": "sprite/mother/smile.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "かほる2.png",
+          "label": "温柔"
+        },
+        "warm": {
+          "file": "sprite/mother/warm.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "かほる3.png",
+          "label": "微笑"
+        },
+        "worried": {
+          "file": "sprite/mother/worried.png",
+          "size": [
+            1085,
+            1535
+          ],
+          "source": "かほる4.png",
+          "label": "担忧·无奈"
+        }
+      },
+      "bust": {
+        "calm": {
+          "file": "sprite/mother_bust/calm.png",
+          "size": [
+            315,
+            700
+          ],
+          "source": "かほる1.png",
+          "label": "平静"
+        },
+        "smile": {
+          "file": "sprite/mother_bust/smile.png",
+          "size": [
+            315,
+            700
+          ],
+          "source": "かほる2.png",
+          "label": "温柔"
+        },
+        "warm": {
+          "file": "sprite/mother_bust/warm.png",
+          "size": [
+            315,
+            700
+          ],
+          "source": "かほる3.png",
+          "label": "微笑"
+        },
+        "worried": {
+          "file": "sprite/mother_bust/worried.png",
+          "size": [
+            315,
+            700
+          ],
+          "source": "かほる4.png",
+          "label": "担忧·无奈"
+        }
+      },
+      "near": {
+        "calm": {
+          "file": "sprite/mother_near/calm.png",
+          "size": [
+            816,
+            624
+          ],
+          "source": "4up.png",
+          "label": "近景·平静"
+        }
+      },
+      "order": [
+        "calm",
+        "smile",
+        "warm",
+        "worried"
+      ]
+    }
+  }
+}

@@ -1,0 +1,867 @@
+/* 鸟笼 · 纯前端引擎
+   把原来 server.py 的提示词、记忆、历史、状态、拍一拍、表情控制搬到浏览器。
+   所有数据只存在本机（localStorage）；模型请求由浏览器直连，不经过任何后端。 */
+(function () {
+'use strict';
+
+const VERSION = '0.2.0-pure';
+const APP_TITLE = '鸟笼';
+const PERSONA_FILES = {
+  persona: '角色人设.md',
+  story: '剧情总纲.md',
+  user: '我的档案.md',
+  assets: '素材清单.md',
+};
+
+const DEFAULT_CONFIG = {
+  api: { base_url: '', key: '', model: '', temperature: 0.85, max_tokens: 1200 },
+  server: { host: '127.0.0.1', port: 8737, open_browser: true, lan: true },
+  ui: {
+    background: 'bg_010', expression: 'normal', dist: 'far', outfit: 'uniform',
+    bgm: 'bgm_01', bgm_volume: 0.6, typing_speed: 30, font_size: 24,
+    multi_send_delay: 8, autoplay: 1,
+  },
+  timeline: 'A',
+  timeline_custom: '',
+  prompt: { max_chars: 34000, history_turns: 12, memory_top_n: 12, summary_every: 20 },
+  features: { web_search: false, attachments: true },
+};
+
+const STATE_DEFAULT = {
+  background: 'bg_010', expression: 'normal', dist: 'far', outfit: 'uniform',
+  cg: '', bgm: 'bgm_01', muted: false, guest: '',
+};
+
+const TIMELINE_BLOCKS = {
+  A: '【时间锚点 A · 待宵亭的日常】实雪仍在咖啡屋『待宵亭』用「樱」这个名字当女招待还债。婚约在法律上已经取消，但帐每天都会来店里。送礼骚扰与红酒事件已经发生，谁送的还不知道。绑架事件尚未发生。',
+  B: '【时间锚点 B · 车内的邀请】已经查明「橘八寻」这个律师并不存在。帐第二次要实雪住进雅乐代家，她拒绝了。帐与平井镜太郎已经和解、互称名字。绑架事件尚未发生。',
+  C: '【时间锚点 C · 同居之后】实雪已经住进雅乐代家，辞掉了咖啡屋的工作。帐肩上留下了枪伤，八寻逃走后音信全无。她叫他「夫君大人」。两人已经互通过心意。',
+  D: '【时间锚点 D · 婚约取消那天】九重家已破产，父母离世，实雪刚从纯喫茶说出「请和我做朋友吧」。帐回家后砸了墙，还没有向她之外的任何人摊牌。',
+};
+
+const SUMMARY_PROMPT = `【记忆整理】你是长期记忆的整理员。下面是一段角色（雅楽代 帳）与用户（九重 実雪）的最近对话。
+请只输出记忆条目，每行一条，格式严格为 \`kind|weight|text\`，最多 6 条，不要编号、不要解释、不要总结句。
+kind 取 fact / event / prefer / promise / mood；weight 1-5（越重要越高）。
+text 用第三人称陈述，只写关于实雪的稳定信息或两人关系的关键点（她的近况与身体状况、喜好与厌恶、做出的约定、发生的重要事件、情绪转折），不要写寒暄和闲聊。
+直接重复已有信息没有意义，宁少勿滥；确实没有值得记的就只输出 \`fact|1|-\`。`;
+
+const HISTORY_BAD_RE = /吃撑|放你回去|做好觉悟|覚悟して|ご主人様|主人大人|你的狗|君の犬|犬にな|牙だけ|獠牙|去勢|絶育|押し倒|ペット/;
+
+const TOUCH_TEXT = {
+  head: '她伸手摸了摸你的头（手心按在头发上，停了一下才收回去）',
+  face: '她伸手碰了碰你的脸（指尖从脸颊擦过去）',
+  arm: '她拉了拉你的衣袖／碰了碰你的肩',
+};
+
+/* ---------------- 本机存取 ---------------- */
+const CFG_KEY = 'tobari_pure_cfg_v1';
+const STATE_KEY = 'tobari_pure_state_v1';
+const MEM_KEY = 'tobari_pure_memory_v1';
+const HIST_KEY = 'tobari_pure_history_v1';
+const TOUCH_KEY = 'tobari_pure_touches_v1';
+const SCENE_KEY = 'tobari_pure_scene_v1';
+const THREAT_KEY = 'tobari_pure_threat_v1';
+const SUMMARY_KEY = 'tobari_pure_summary_v1';
+
+const fallbackStore = new Map();
+function readRaw(key, def) {
+  try {
+    const s = localStorage.getItem(key);
+    if (s !== null) return JSON.parse(s);
+  } catch (e) { /* file:// 或隐私模式 */ }
+  if (fallbackStore.has(key)) return clone(fallbackStore.get(key));
+  return clone(def);
+}
+function writeRaw(key, val) {
+  const v = clone(val);
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* 忽略 */ }
+  fallbackStore.set(key, v);
+}
+function clone(v) { return JSON.parse(JSON.stringify(v)); }
+function deepMerge(base, patch) {
+  const out = clone(base || {});
+  Object.keys(patch || {}).forEach((k) => {
+    const v = patch[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+      out[k] = deepMerge(out[k], v);
+    } else {
+      out[k] = clone(v);
+    }
+  });
+  return out;
+}
+
+/* ---------------- 时间 ---------------- */
+function pad2(n) { return String(n).padStart(2, '0'); }
+function stamp(withSec) {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' +
+    pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + (withSec ? ':' + pad2(d.getSeconds()) : '');
+}
+function nowText() {
+  const d = new Date();
+  const wd = '日一二三四五六'[d.getDay()];
+  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + wd + ' ' +
+    pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
+/* ---------------- 初始化数据 ---------------- */
+const FS = { ready: null, manifest: null, personas: null, seed: null, rules: null };
+
+async function fetchText(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('读取失败：' + url);
+  return r.text();
+}
+
+async function ensureInit() {
+  if (FS.ready) return FS.ready;
+  FS.ready = (async () => {
+    const pd = window.PURE_DATA || null;
+    if (pd) {
+      FS.manifest = pd.manifest || {};
+      FS.personas = pd.persona || {};
+      FS.seed = pd.seed || {};
+      FS.rules = pd.rules || {};
+    } else {
+      FS.manifest = await (await fetch('assets/manifest.json')).json();
+      FS.seed = {};
+      FS.rules = {};
+      FS.personas = {};
+      for (const k of Object.keys(PERSONA_FILES)) {
+        try { FS.personas[PERSONA_FILES[k]] = await fetchText('persona/' + encodeURIComponent(PERSONA_FILES[k])); }
+        catch (e) { FS.personas[PERSONA_FILES[k]] = ''; }
+      }
+    }
+    if (!FS.manifest || !Array.isArray(FS.manifest.bg)) throw new Error('素材清单读取失败');
+
+    if (readRaw(CFG_KEY, null) === null) {
+      const cfg = deepMerge(DEFAULT_CONFIG, FS.seed.config || {});
+      if (cfg.api) { cfg.api.key = ''; cfg.api.has_key = false; }
+      if (cfg.features) cfg.features.web_search = false;
+      writeRaw(CFG_KEY, cfg);
+    }
+    if (readRaw(STATE_KEY, null) === null) writeRaw(STATE_KEY, deepMerge(STATE_DEFAULT, FS.seed.state || {}));
+    if (readRaw(MEM_KEY, null) === null) writeRaw(MEM_KEY, Array.isArray(FS.seed.memory) ? FS.seed.memory : []);
+    if (readRaw(HIST_KEY, null) === null) {
+      const h = FS.seed.history || {};
+      writeRaw(HIST_KEY, { offline: h.offline || [], online: h.online || [] });
+    }
+    if (readRaw(TOUCH_KEY, null) === null) writeRaw(TOUCH_KEY, []);
+    if (readRaw(SCENE_KEY, null) === null) writeRaw(SCENE_KEY, {});
+    return true;
+  })();
+  return FS.ready;
+}
+
+/* ---------------- 配置 / 状态 ---------------- */
+function loadConfig() { return deepMerge(DEFAULT_CONFIG, readRaw(CFG_KEY, {})); }
+function publicConfig(cfg) {
+  const c = clone(cfg || loadConfig());
+  c.api = c.api || {};
+  c.api.has_key = !!(c.api.key || '').trim();
+  c.api.key = '';
+  if (c.features) c.features.web_search = false;
+  return c;
+}
+function saveConfig(patch) {
+  const old = loadConfig();
+  const cfg = deepMerge(old, patch || {});
+  if (patch && patch.api && patch.api.has_key && !((patch.api.key || '').trim())) cfg.api.key = (old.api || {}).key || '';
+  writeRaw(CFG_KEY, cfg);
+  return cfg;
+}
+function tempConfig(patch) {
+  const old = loadConfig();
+  const cfg = deepMerge(old, patch || {});
+  if (patch && patch.api && patch.api.has_key && !((patch.api.key || '').trim())) cfg.api.key = (old.api || {}).key || '';
+  return cfg;
+}
+
+function loadState() { return deepMerge(STATE_DEFAULT, readRaw(STATE_KEY, {})); }
+function saveState(patch) {
+  const next = deepMerge(loadState(), patch || {});
+  writeRaw(STATE_KEY, next);
+  return next;
+}
+function resetState() {
+  const cfg = loadConfig();
+  const ui = cfg.ui || {};
+  const old = loadState();
+  const st = deepMerge(STATE_DEFAULT, {
+    background: ui.background || STATE_DEFAULT.background,
+    expression: ui.expression || 'normal',
+    dist: ui.dist || 'far',
+    outfit: ui.outfit || 'uniform',
+    bgm: ui.bgm || 'bgm_01',
+    muted: !!old.muted,
+    guest: '', cg: '',
+  });
+  writeRaw(STATE_KEY, st);
+  return st;
+}
+function bgItem(id) { return (FS.manifest.bg || []).find((x) => x.id === id) || null; }
+function bgLabel(id) { const it = bgItem(id); return it ? (it.label || '') : ''; }
+
+/* ---------------- 记忆 ---------------- */
+function loadMemory() { const m = readRaw(MEM_KEY, []); return Array.isArray(m) ? m : []; }
+function addMemory(items) {
+  if (!items || !items.length) return 0;
+  const mem = loadMemory();
+  const ids = new Set(mem.map((x) => x.id));
+  let added = 0;
+  items.forEach((it) => {
+    const text = String((it && it.text) || '').trim();
+    if (!text) return;
+    let mid = 'm' + Math.floor(Date.now() / 1000) + pad2(added);
+    while (ids.has(mid)) mid += 'x';
+    mem.push({ id: mid, t: stamp(false), kind: it.kind || 'fact', text, weight: Number(it.weight) || 3 });
+    ids.add(mid);
+    added++;
+  });
+  if (mem.length > 400) {
+    mem.sort((a, b) => (Number(a.weight) || 3) - (Number(b.weight) || 3) || String(a.t || '').localeCompare(String(b.t || '')));
+    const drop = mem.slice(0, mem.length - 400);
+    const rest = mem.filter((x) => !drop.includes(x)).sort((a, b) => String(a.t || '').localeCompare(String(b.t || '')));
+    rest.unshift({
+      id: 'm_archived', t: stamp(false), kind: 'fact', weight: 2,
+      text: '早期记忆（压缩）：' + drop.slice(0, 30).map((x) => x.text || '').join('；'),
+    });
+    writeRaw(MEM_KEY, rest);
+  } else {
+    writeRaw(MEM_KEY, mem);
+  }
+  return added;
+}
+function pickMemory(limit) {
+  return loadMemory().sort((a, b) => (Number(b.weight) || 3) - (Number(a.weight) || 3) || String(b.t || '').localeCompare(String(a.t || ''))).slice(0, limit);
+}
+function updateMemory(mid, text) {
+  mid = String(mid || '').trim();
+  text = String(text || '').trim().slice(0, 1000);
+  if (!mid || !text) return false;
+  const mem = loadMemory();
+  const it = mem.find((x) => x.id === mid);
+  if (!it) return false;
+  it.text = text;
+  it.t_edit = stamp(false);
+  writeRaw(MEM_KEY, mem);
+  return true;
+}
+function deleteMemory(mid) {
+  mid = String(mid || '').trim();
+  if (!mid) return false;
+  const mem = loadMemory();
+  const rest = mem.filter((x) => x.id !== mid);
+  if (rest.length === mem.length) return false;
+  writeRaw(MEM_KEY, rest);
+  return true;
+}
+function clearMemory() { writeRaw(MEM_KEY, []); }
+
+/* ---------------- 备份 / 迁移 ---------------- */
+function exportPayload() {
+  const cfg = clone(loadConfig());
+  delete cfg.api.key;
+  delete cfg.api.has_key;
+  return {
+    app: '鳥籠',
+    version: VERSION,
+    exported_at: stamp(true),
+    config: cfg,
+    state: loadState(),
+    memory: loadMemory(),
+    history: loadHistory(),
+    summary: readRaw(SUMMARY_KEY, {}),
+    touches: readRaw(TOUCH_KEY, []),
+    scene: readRaw(SCENE_KEY, {}),
+    threat: readRaw(THREAT_KEY, {}),
+  };
+}
+function importPayload(data) {
+  if (!data || typeof data !== 'object') throw new Error('不是有效的备份文件');
+  const cur = loadConfig();
+  if (data.config && typeof data.config === 'object') {
+    const cfg = deepMerge(cur, data.config);
+    // 换设备导入时保留本机当前 Key；备份里本来就不放 Key
+    cfg.api.key = (cur.api || {}).key || '';
+    writeRaw(CFG_KEY, cfg);
+  }
+  if (data.state && typeof data.state === 'object') writeRaw(STATE_KEY, deepMerge(STATE_DEFAULT, data.state));
+  if (Array.isArray(data.memory)) writeRaw(MEM_KEY, data.memory);
+  if (data.history && typeof data.history === 'object') {
+    writeRaw(HIST_KEY, {
+      offline: Array.isArray(data.history.offline) ? data.history.offline : [],
+      online: Array.isArray(data.history.online) ? data.history.online : [],
+    });
+  }
+  if (data.summary && typeof data.summary === 'object') writeRaw(SUMMARY_KEY, data.summary);
+  if (Array.isArray(data.touches)) writeRaw(TOUCH_KEY, data.touches);
+  if (data.scene && typeof data.scene === 'object') writeRaw(SCENE_KEY, data.scene);
+  if (data.threat && typeof data.threat === 'object') writeRaw(THREAT_KEY, data.threat);
+  return true;
+}
+
+/* ---------------- 历史 ---------------- */
+function loadHistory() {
+  const h = readRaw(HIST_KEY, { offline: [], online: [] });
+  if (!h || typeof h !== 'object') return { offline: [], online: [] };
+  return { offline: Array.isArray(h.offline) ? h.offline : [], online: Array.isArray(h.online) ? h.online : [] };
+}
+function appendChat(role, text, extra, channel) {
+  const h = loadHistory();
+  const ch = channel === 'online' ? 'online' : 'offline';
+  const line = Object.assign({ t: stamp(true), role, text }, extra || {});
+  h[ch].push(line);
+  if (h[ch].length > 600) h[ch] = h[ch].slice(-600);
+  writeRaw(HIST_KEY, h);
+}
+function historyForApi(channel) {
+  const h = loadHistory();
+  const list = h[channel === 'online' ? 'online' : 'offline'];
+  return list.map((x) => ({ role: x.role, content: x.text, t: x.t }));
+}
+function recentHistory(turns, channel) {
+  const h = loadHistory();
+  const lines = [];
+  h[channel === 'online' ? 'online' : 'offline'].forEach((obj) => {
+    if (!obj || !['user', 'assistant'].includes(obj.role) || !obj.text) return;
+    if (obj.role === 'assistant' && HISTORY_BAD_RE.test(obj.text)) return;
+    let text = obj.text;
+    if (obj.role === 'assistant') text = text.replace('雅楽代君', '\u0000NAME\u0000').replace(/君/g, 'あなた').replace(/\u0000NAME\u0000/g, '雅楽代君');
+    lines.push({ role: obj.role, content: text });
+  });
+  return lines.slice(-turns * 2);
+}
+function clearHistory() { writeRaw(HIST_KEY, { offline: [], online: [] }); }
+
+/* ---------------- 拍一拍 / 场景 ---------------- */
+function addTouch(kind) {
+  if (!TOUCH_TEXT[kind]) return false;
+  const cur = readRaw(TOUCH_KEY, []);
+  cur.push({ t: nowText(), kind, text: TOUCH_TEXT[kind] });
+  writeRaw(TOUCH_KEY, cur.slice(-6));
+  return true;
+}
+function pendingTouches() { const cur = readRaw(TOUCH_KEY, []); return Array.isArray(cur) ? cur : []; }
+function clearTouches() { writeRaw(TOUCH_KEY, []); }
+function addSceneEvent(bgId, label) { writeRaw(SCENE_KEY, { t: nowText(), bg: bgId, label: label || bgId }); }
+function pendingScene() { const d = readRaw(SCENE_KEY, {}); return d && d.bg ? d : {}; }
+function clearScene() { writeRaw(SCENE_KEY, {}); }
+
+/* ---------------- 提示词 ---------------- */
+function timelineText(cfg) {
+  const custom = String(cfg.timeline_custom || '').trim();
+  if (custom) return '【时间锚点 · 自定义】' + custom;
+  return TIMELINE_BLOCKS[String(cfg.timeline || 'A').toUpperCase()] || TIMELINE_BLOCKS.A;
+}
+function manifestDigest() {
+  const man = FS.manifest || {};
+  const exprs = [];
+  Object.keys(((man.sprite || {}).bust || {})).forEach((k) => {
+    exprs.push(k + '=' + (((man.sprite || {}).bust || {})[k].label || ''));
+  });
+  const bgs = [], bgms = [];
+  (man.bg || []).slice(0, 60).forEach((it) => { if (it.curated) bgs.push(it.id + '=' + (it.label || '')); });
+  (man.bgm || []).slice(0, 60).forEach((it) => bgms.push(it.id + '=' + (it.label || '')));
+  const guests = [];
+  Object.keys(man.guests || {}).forEach((gid) => {
+    const g = man.guests[gid];
+    const keys = Object.keys(g.bust || {}).map((k) => k + '=' + ((g.bust || {})[k].label || '')).join('，');
+    guests.push(gid + '（' + (g.name || '') + '）表情键：' + keys);
+  });
+  const guestLine = guests.length ? '配角（可出场）：' + guests.join('；') + '\n' : '';
+  return '【可用素材 id（只能从这里选）】\n' +
+    '表情键：' + exprs.join('，') + '（近景/半身两档共用同一套键）\n' +
+    '距离：dist=far（半身） / dist=near（整屏近景特写）\n' +
+    guestLine +
+    '背景：' + bgs.join('，') + '\n' +
+    'BGM：' + bgms.join('，');
+}
+function scenePlaceNote(bgId, label) {
+  const bid = String(bgId || '').trim();
+  const lab = String(label || '').trim();
+  if (bid === 'bg_009' || lab.includes('纯喫茶') || lab.includes('純喫茶')) {
+    return '街上的另一家纯喫茶，不是待宵亭，也不是実雪打工的カフェー。原作里她是提前到这家店等人（约在下午一点），觉得这里安静、和打工的店气氛像但不是同一个地方。不要写成她在这里当女招待、也不要写成你来看她上班；你们是出门来这里见面/喝茶的。';
+  }
+  if (['bg_010', 'bg_011', 'bg_050', 'bg_051', 'bg_052', 'bg_053', 'bg_054', 'bg_055'].includes(bid) || lab.includes('咖啡厅') || lab.includes('カフェー')) {
+    return '待宵亭，実雪打工的咖啡厅（她在这里用「樱」这个化名当女招待还债）；帳每天来店里看她。这里是她的工作地点，不是她家，也不是纯喫茶。';
+  }
+  if (lab.includes('雅乐代') || lab.includes('雅樂代') || lab.includes('帐的房间') || lab.includes('衣装间')) {
+    return '雅楽代家（帳的家/本家）。这里不是実雪打工的店，也不是她自己的公寓；父母可能在这里。';
+  }
+  if (lab.includes('九重')) return '九重家的旧宅/房间（実雪已经破产的旧家），不是她现在住的公寓，也不是待宵亭。';
+  if (lab.includes('公寓')) return '実雪住的公寓（咖啡屋老板提供的住处），不是雅楽代家，也不是她打工的店。';
+  if (bid === 'bg_035' || lab.includes('主人房')) return '実雪自己的房间（主人公的房间），不是雅楽代家，也不是店里。';
+  if (lab.includes('平井')) return '平井鏡太郎的家/住处，不是帳家，也不是実雪家。';
+  if (lab.includes('学校') || lab.includes('教室')) return '学校/校舍，不是家，也不是咖啡店。';
+  if (['街道', '街', '小巷', '后巷', '死巷', '东京站', '百货店', '电影院', '西餐厅', '酒吧', '酒屋', '乡间', '海', 'タクシー'].some((k) => lab.includes(k))) {
+    return '出门在外（街道/公共场所/约会地点），不是待宵亭，也不是家；你们是出来办事、约会或偶遇。';
+  }
+  if (['夜空', '星空', '烟火', '朝霞', '夕阳', '晴空', '天空'].some((k) => lab.includes(k))) {
+    return '天空/远景/时间氛围，不是一间具体的房间；只当景色和情绪，不要据此说“回到了家/店里”。';
+  }
+  if (['鸟笼', '椿', '信', '礼物', '葡萄酒', '抽屉', '书', '注射', '车轮', '纯白', '漆黑', '素材', '意象', '虚化'].some((k) => lab.includes(k))) {
+    return '意象/物件/特写画面，不是实际所在的地点；不要把它当成新房间或新店。';
+  }
+  if (lab.includes('仓库')) return '仓库，不是待宵亭，也不是家。';
+  if (lab.includes('浴室')) return '浴室，不是待宵亭，也不是外面的街道。';
+  return '当前画面所示的地点；不要把它误认成待宵亭或実雪打工的店。';
+}
+function readPersona(key) {
+  const f = PERSONA_FILES[key] || '';
+  return (FS.personas && FS.personas[f]) || '';
+}
+function buildSystemBlocks(cfg, channel) {
+  const st = loadState();
+  const bg = bgLabel(st.background);
+  const scene = '【当前时间】' + nowText() + '（用户本地时间）\n' +
+    '【当前场景】背景=' + st.background + '（' + bg + '）；表情=' + st.expression + '；BGM=' + st.bgm + '；CG=' + (st.cg || '无') + '\n' +
+    '【地点性质（必须遵守）】' + scenePlaceNote(st.background, bg);
+  const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
+  const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
+  const blocks = [
+    readPersona('persona'), scene, timelineText(cfg), readPersona('user'), memText,
+    manifestDigest(), readPersona('story'), (FS.rules && FS.rules.format) || '',
+  ];
+  if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
+  if (channel !== 'online') {
+    const sc = pendingScene();
+    if (sc && sc.bg) {
+      blocks.push('【她刚把场景换了（刚发生，还没回应过）】\n' +
+        '实雪把画面从刚才的地方换成了「' + (sc.label || sc.bg) + '」（' + sc.bg + '）。' +
+        '这个新地点的性质：' + scenePlaceNote(sc.bg, sc.label || '') + '\n' +
+        '这不是她按错了按钮——就当成你们真的走过去了。' +
+        '回应时先用一句第一人称旁白交代移动，例如「走了一会儿，我们到了电影院。」（换成对应地点），然后再接她/你的台词或动作；不要问她为什么换地方，也不要提“背景”“按钮”“设置”这些词。');
+    }
+    const touches = pendingTouches();
+    if (touches.length) {
+      blocks.push('【她刚才的动作（刚发生，还没回应过）】\n' +
+        touches.slice(-3).map((t) => '- ' + (t.text || '')).join('\n') +
+        '\n这是她主动碰了你。回应里可以自然地带一句反应（僵一下、嘴硬、或者干脆顺着她），不要每次都提，也不要写成大段感想；最多占一行。');
+    }
+  }
+  return blocks.filter((b) => b && String(b).trim());
+}
+function buildMessages(cfg, userText, extraSystem, channel) {
+  const blocks = buildSystemBlocks(cfg, channel);
+  if (extraSystem) blocks.unshift(extraSystem);
+  const turns = Number((cfg.prompt || {}).history_turns || 12);
+  const msgs = [{ role: 'system', content: blocks.join('\n\n') }].concat(recentHistory(turns, channel));
+  msgs.push({ role: 'user', content: userText });
+  const budget = Number((cfg.prompt || {}).max_chars || 24000);
+  let total = msgs.reduce((n, m) => n + String(m.content || '').length, 0);
+  while (msgs.length > 2 && total > budget) { total -= String(msgs[1].content || '').length; msgs.splice(1, 1); }
+  if (total > budget) {
+    const over = total - budget;
+    msgs[msgs.length - 1].content = msgs[msgs.length - 1].content.slice(0, Math.max(200, msgs[msgs.length - 1].content.length - over));
+  }
+  return msgs;
+}
+
+/* ---------------- 模型调用 ---------------- */
+function endpointUrl(base, path) {
+  const b = String(base || '').trim().replace(/\/+$/, '');
+  if (!b) return '';
+  path = path || '/chat/completions';
+  if (b.endsWith('/chat/completions')) return b;
+  if (b.endsWith('/v1')) return b + path;
+  if (/\/v\d/i.test(b)) return b + path;
+  return b + '/v1' + path;
+}
+function modelsUrl(base) {
+  const b = String(base || '').trim().replace(/\/+$/, '');
+  if (!b) return '';
+  if (b.endsWith('/chat/completions')) return b.replace(/\/chat\/completions$/, '/models');
+  if (b.endsWith('/v1')) return b + '/models';
+  if (/\/v\d/i.test(b)) return b + '/models';
+  return b + '/v1/models';
+}
+async function postJSON(url, payload, key, timeout) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout || 90000);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    const text = await r.text();
+    if (!r.ok) throw new Error('接口返回 ' + r.status + '：' + text.slice(0, 500));
+    try { return JSON.parse(text); } catch (e) { throw new Error('接口返回不是 JSON：' + text.slice(0, 200)); }
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('请求超时（90 秒）');
+    if (e && /Failed to fetch|NetworkError|Load failed/i.test(e.message || '')) throw new Error('连不上接口（检查 Base URL / 网络 / 浏览器 CORS）');
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+async function callModel(cfg, messages, timeout) {
+  const api = cfg.api || {};
+  const base = String(api.base_url || '').trim();
+  const key = String(api.key || '').trim();
+  const model = String(api.model || '').trim();
+  if (!base) throw new Error('还没有填 API 地址');
+  if (!key) throw new Error('还没有填 API Key');
+  const payload = {
+    model: model || 'gpt-4o-mini', messages,
+    temperature: Number(api.temperature == null ? 0.85 : api.temperature),
+    max_tokens: Number(api.max_tokens || 1200),
+  };
+  const body = await postJSON(endpointUrl(base, '/chat/completions'), payload, key, timeout);
+  const choices = body.choices || [];
+  if (!choices.length) throw new Error('接口没有返回内容');
+  const msg = choices[0].message || {};
+  let text = String(msg.content || '').trim();
+  if (text) return text;
+  const reasoning = msg.reasoning_content || msg.reasoning || '';
+  const finish = choices[0].finish_reason || '';
+  const payload2 = Object.assign({}, payload, { max_tokens: Math.max(Number(payload.max_tokens) * 2, 2000) });
+  const body2 = await postJSON(endpointUrl(base, '/chat/completions'), payload2, key, timeout);
+  const msg2 = ((body2.choices || [{}])[0] || {}).message || {};
+  text = String(msg2.content || '').trim();
+  if (text) return text;
+  let hint = '（finish_reason=' + (finish || '?');
+  if (reasoning) hint += '，模型只吐了思考过程';
+  hint += '）';
+  throw new Error('模型这次没给出正文，已自动重试一次仍为空 ' + hint + '。把 max_tokens 调大，或换成不带思考的模型。');
+}
+async function listModels(cfg, timeout) {
+  const api = cfg.api || {};
+  const base = String(api.base_url || '').trim();
+  const key = String(api.key || '').trim();
+  if (!base) throw new Error('还没有填 API 地址');
+  if (!key) throw new Error('还没有填 API Key');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout || 45000);
+  try {
+    const r = await fetch(modelsUrl(base), { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal });
+    const text = await r.text();
+    if (!r.ok) throw new Error('拉取失败 ' + r.status + '：' + text.slice(0, 300));
+    let body; try { body = JSON.parse(text); } catch (e) { throw new Error('模型列表不是 JSON'); }
+    if (!body || !Array.isArray(body.data)) throw new Error('这个接口不返回模型列表（/models 不是 OpenAI 格式）');
+    return body.data.map((it) => (it && it.id) || (typeof it === 'string' ? it : '')).filter(Boolean).sort();
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('请求超时');
+    if (e && /Failed to fetch|NetworkError|Load failed/i.test(e.message || '')) throw new Error('连不上接口（检查 Base URL / 网络 / CORS）');
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
+/* ---------------- 解析模型输出 ---------------- */
+function onlineFilter(text) {
+  const out = [];
+  String(text || '').split('\n').forEach((ln) => {
+    let s = ln.trim();
+    if (!s || s.startsWith('（') || s.startsWith('(')) return;
+    s = s.replace(/^[「『"]+|[」』"]+$/g, '');
+    if (s) out.push(s);
+  });
+  return out.join('\n');
+}
+function parseMemoLine(s) {
+  if (!s || ['-', '无', 'none'].includes(s.trim())) return [];
+  const parts = s.split('|').map((x) => x.trim());
+  let kind = 'fact', weight = '3', text = '';
+  if (parts.length >= 3) { kind = parts[0]; weight = parts[1]; text = parts.slice(2).join('|'); }
+  else if (parts.length === 2) { kind = 'fact'; weight = parts[0]; text = parts[1]; }
+  else { kind = 'fact'; weight = '3'; text = parts[0]; }
+  let w = parseInt(weight, 10); if (!Number.isFinite(w)) w = 3; w = Math.max(1, Math.min(5, w));
+  if (!text || text === '-') return [];
+  return [{ kind: ['fact', 'event', 'prefer', 'promise', 'mood'].includes(kind) ? kind : 'fact', weight: w, text }];
+}
+function cleanLines(body) {
+  const out = [];
+  let fence = false;
+  String(body || '').split('\n').forEach((ln) => {
+    let s = ln.trim();
+    if (!s) return;
+    if (s.startsWith('```') || s.startsWith('~~~')) { fence = !fence; return; }
+    if (fence) return;
+    if (/^(call|tool_call|function_call|assistant|system)\s*[:：]/i.test(s)) return;
+    s = s.replace(/^line\s*\d+\s*(?:\([^)]*\))?\s*[:：]/i, '');
+    s = s.replace(/^（?(?:dialogue|narration|inner|thought|台词|心声|旁白)）?\s*[:：]?\s*/i, '');
+    s = s.replace(/\*\*/g, '').replace(/`/g, '');
+    s = s.replace(/^[*#>]+/, '').trim();
+    if (!s) return;
+    if (!/[\u3040-\u30ff\u3400-\u9fff]/.test(s)) return;
+    out.push(s);
+  });
+  return out.slice(0, 12).join('\n');
+}
+function splitReply(raw) {
+  const statePatch = {}, memos = [];
+  let webQuery = '', section = '';
+  const keep = [];
+  String(raw || '').replace(/\r/g, '').split('\n').forEach((ln) => {
+    const s = ln.trim();
+    if (s.startsWith('@@WEB')) { webQuery = s.slice(5).trim().replace(/^[：:]+/, ''); return; }
+    if (s.startsWith('@@STATE')) {
+      section = 'state';
+      s.slice(6).replace(/，/g, ' ').split(/\s+/).forEach((kv) => {
+        if (!kv.includes('=')) return;
+        const i = kv.indexOf('=');
+        const k = kv.slice(0, i).trim().toLowerCase();
+        const v = kv.slice(i + 1).trim();
+        if (k === 'bg' || k === 'background') statePatch.background = v || '';
+        else if (k === 'face' || k === 'expression') statePatch.expression = v || '';
+        else if (k === 'bgm') statePatch.bgm = v || '';
+        else if (k === 'cg') statePatch.cg = v || '';
+        else if (k === 'dist' || k === 'distance') statePatch.dist = v || '';
+        else if (k === 'guest' || k === 'cameo') statePatch.guest = v || '';
+      });
+      return;
+    }
+    if (s.startsWith('@@MEMO')) {
+      section = 'memo';
+      const rest = s.slice(6).trim();
+      if (rest) memos.push(...parseMemoLine(rest));
+      return;
+    }
+    if (section === 'memo') { if (s) memos.push(...parseMemoLine(s)); return; }
+    keep.push(ln);
+  });
+  return { reply: cleanLines(keep.join('\n').trim()), statePatch, memos: memos.slice(0, 4), webQuery };
+}
+
+/* ---------------- 配角 / 状态校验 ---------------- */
+const GUEST_PEOPLE = {
+  kagami: /(?:平井\s*)?(?:鏡太郎|镜太郎)/,
+  father: /(?:雅[樂乐]代\s*)?暁/,
+  mother: /(?:雅[樂乐]代\s*)?(?:香[穗穂]留|かほる)/,
+};
+function guestLineRes() {
+  const out = {};
+  Object.keys(GUEST_PEOPLE).forEach((gid) => {
+    out[gid] = new RegExp('^(?:' + GUEST_PEOPLE[gid].source + ')\\s*(?:\\[[A-Za-z_]+\\])?\\s*[：:]');
+  });
+  return out;
+}
+function replyMentionsGuest(reply) {
+  const res = guestLineRes();
+  for (const raw of String(reply || '').split('\n')) {
+    const s = raw.trim();
+    if (!s) continue;
+    for (const gid of Object.keys(res)) { if (res[gid].test(s)) return gid; }
+    if (!/^[「『（(]/.test(s)) {
+      for (const gid of Object.keys(GUEST_PEOPLE)) { if (GUEST_PEOPLE[gid].test(s)) return gid; }
+    }
+  }
+  return '';
+}
+function threatGuardOk() {
+  const g = readRaw(THREAT_KEY, {});
+  if (!g || !g.line) return true;
+  return (loadHistory().offline.length - Number(g.line)) >= 60;
+}
+function threatGuardMark() { writeRaw(THREAT_KEY, { line: loadHistory().offline.length }); }
+function sanitizeStatePatch(patch) {
+  const out = {};
+  const man = FS.manifest || {};
+  const bgIds = new Set((man.bg || []).map((x) => x.id));
+  const faceKeys = new Set(Object.keys((man.sprite || {}).bust || {}));
+  const bgmIds = new Set((man.bgm || []).map((x) => x.id));
+  if (bgIds.has(patch.background)) out.background = patch.background;
+  if (faceKeys.has(patch.expression)) {
+    let expr = patch.expression;
+    if (expr === 'threat' && !threatGuardOk()) expr = 'angry';
+    if (expr === 'threat') threatGuardMark();
+    out.expression = expr;
+  }
+  if (['far', 'near'].includes(patch.dist)) out.dist = patch.dist;
+  const g = patch.guest;
+  if (['', 'none', 'off'].includes(g)) out.guest = '';
+  else if (g && (man.guests || {})[g]) out.guest = g;
+  if (bgmIds.has(patch.bgm)) out.bgm = patch.bgm;
+  if ('cg' in patch) out.cg = new Set((man.cg || []).map((x) => x.id)).has(patch.cg) ? patch.cg : '';
+  return out;
+}
+
+/* ---------------- 记忆自动总结 ---------------- */
+function summaryCounter() { const d = readRaw(SUMMARY_KEY, {}); return Number(d.n || 0) || 0; }
+function setSummaryCounter(n) { writeRaw(SUMMARY_KEY, { n: Number(n) || 0, t: stamp(false) }); }
+function parseMemoLines(raw) {
+  const items = [];
+  String(raw || '').split('\n').forEach((line) => {
+    line = line.trim().replace(/`/g, '').trim();
+    if (!line || !line.includes('|')) return;
+    const parts = line.split('|').map((x) => x.trim());
+    if (parts.length < 3) return;
+    const kind = parts[0], weight = parseInt(parts[1], 10), text = parts.slice(2).join('|').trim();
+    if (!text || text === '-') return;
+    items.push({ kind: kind || 'fact', weight: Number.isFinite(weight) ? Math.max(1, Math.min(5, weight)) : 3, text });
+  });
+  return items.slice(0, 8);
+}
+async function summarizeRecent(cfg, turns, channel) {
+  const lines = recentHistory(turns, channel);
+  if (!lines.length) return 0;
+  const transcript = lines.map((m) => (m.role === 'user' ? '実雪：' : '帳：') + m.content).join('\n');
+  try {
+    const raw = await callModel(cfg, [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: transcript }], 90000);
+    return addMemory(parseMemoLines(raw));
+  } catch (e) { return 0; }
+}
+function tickSummary(cfg, channel) {
+  let every = Number((cfg.prompt || {}).summary_every || 0);
+  if (!Number.isFinite(every) || every <= 0) return;
+  const n = summaryCounter() + 1;
+  if (n < every) { setSummaryCounter(n); return; }
+  setSummaryCounter(0);
+  setTimeout(() => { summarizeRecent(cfg, every, channel).catch(() => {}); }, 0);
+}
+
+/* ---------------- 附件 ---------------- */
+function decodeBase64Text(b64) {
+  const raw = atob(b64);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+async function upload(body) {
+  const name = String(body.name || 'file').split(/[\\/]/).pop() || 'file';
+  const data = String(body.data || '');
+  if (!data) return { ok: false, error: '空文件' };
+  const ext = (name.match(/\.([^.]+)$/) || [])[1] || '';
+  const lower = ext.toLowerCase();
+  const textExt = ['txt', 'md', 'csv', 'json', 'html', 'htm', 'py', 'js', 'ts', 'css', 'xml', 'yaml', 'yml'];
+  if (!textExt.includes(lower)) {
+    return { ok: false, error: '纯前端版暂不支持 .' + (ext || '未知') + ' 正文提取；先把文字复制进来，或换 txt/md/csv/json。' };
+  }
+  let text = '';
+  try { text = decodeBase64Text(data.split(',')[1] || ''); }
+  catch (e) { return { ok: false, error: '文件解码失败' }; }
+  const note = '[附件] ' + name + '（' + Number(body.size || text.length) + ' 字节，纯文本）\n【附件正文·节选】\n' + text.slice(0, 3500) +
+    (text.length > 3500 ? '\n……（后略，共 ' + text.length + ' 字）' : '');
+  return { ok: true, file: name, note, size: Number(body.size || text.length), chars: text.length, kind: '纯文本' };
+}
+
+/* ---------------- 聊天 ---------------- */
+async function chat(body) {
+  const cfg = loadConfig();
+  let text = String(body.text || '').trim();
+  const attachNote = String(body.attach_note || '').trim();
+  if (attachNote) text = (text + '\n' + attachNote).trim() || attachNote;
+  if (!text) return { ok: false, error: '空消息' };
+  const extraSystem = String(body.extra_system || '').trim();
+  const channel = body.channel === 'online' ? 'online' : 'offline';
+  let histText = text;
+  if (attachNote) {
+    const head = attachNote.split('【附件正文')[0].trim();
+    histText = (text.replace(attachNote, '').trim() + '\n' + head + '〔正文已读，见当轮回复〕').trim();
+  }
+  let raw;
+  try {
+    raw = await callModel(cfg, buildMessages(cfg, text, extraSystem, channel), 90000);
+  } catch (e) {
+    const msg = e.message || String(e);
+    return { ok: false, error: msg, need_key: /API 地址|API Key/.test(msg) };
+  }
+  const parsed = splitReply(raw);
+  let reply = parsed.reply;
+  if (channel === 'online') reply = onlineFilter(reply);
+  if (!reply) reply = '（……声が、うまく出ない。もう一度、俺の名前を呼んで。）（……声音有点出不来了。再叫一次我的名字。）';
+  const applied = sanitizeStatePatch(parsed.statePatch);
+  if (Object.keys(FS.manifest.guests || {}).length) applied.guest = replyMentionsGuest(reply);
+  if (Object.keys(applied).length) saveState(applied);
+  addMemory(parsed.memos);
+  appendChat('user', histText, null, channel);
+  appendChat('assistant', reply, Object.keys(applied).length ? { state: applied } : null, channel);
+  if (channel !== 'online') { clearTouches(); clearScene(); }
+  tickSummary(cfg, channel);
+  return { ok: true, reply, state: applied, memo: parsed.memos.length, model: (cfg.api || {}).model || '' };
+}
+
+/* ---------------- 路由 ---------------- */
+function parseBody(opt) {
+  try { return opt && opt.body ? JSON.parse(opt.body) : {}; }
+  catch (e) { return {}; }
+}
+async function request(url, opt) {
+  await ensureInit();
+  opt = opt || {};
+  const method = String(opt.method || 'GET').toUpperCase();
+  const u = new URL(url, location.href);
+  let path = u.pathname.replace(/\/+$/, '') || '/';
+  // file:///C:/... 下 new URL('/api/x', ...) 会变成 /C:/api/x，这里归一化
+  const apiAt = path.lastIndexOf('/api/');
+  if (apiAt >= 0) path = path.slice(apiAt);
+
+  if (method === 'GET') {
+    if (path === '/api/config') return { config: publicConfig(loadConfig()), version: VERSION, pure: true };
+    if (path === '/api/manifest') return { manifest: FS.manifest };
+    if (path === '/api/state') return { state: loadState() };
+    if (path === '/api/memory') return { memory: loadMemory() };
+    if (path === '/api/history') return { history: historyForApi(u.searchParams.get('channel') || 'offline') };
+    if (path === '/api/export') return { ok: true, data: exportPayload() };
+    if (path === '/api/ping') return { ok: true, version: VERSION, pure: true };
+  }
+
+  if (method === 'POST') {
+    const body = parseBody(opt);
+    if (path === '/api/chat') return chat(body);
+    if (path === '/api/state') {
+      const old = loadState();
+      const patch = body.state || body || {};
+      const next = saveState(patch);
+      if (patch.background && patch.background !== old.background) addSceneEvent(patch.background, bgLabel(patch.background));
+      return { state: next };
+    }
+    if (path === '/api/config') {
+      const cfg = saveConfig(body.config || body);
+      return { ok: true, config: publicConfig(cfg) };
+    }
+    if (path === '/api/config/test') {
+      try {
+        const cfg = tempConfig(body.config || body);
+        const sample = await callModel(cfg, [
+          { role: 'system', content: '你是一个连通性测试助手。' },
+          { role: 'user', content: '只回复两个字：在的' },
+        ], 45000);
+        return { ok: true, sample: String(sample).slice(0, 200) };
+      } catch (e) { return { ok: false, error: e.message || String(e) }; }
+    }
+    if (path === '/api/models') {
+      try { return { ok: true, models: await listModels(tempConfig(body.config || body)) }; }
+      catch (e) { return { ok: false, error: e.message || String(e) }; }
+    }
+    if (path === '/api/memory/update') {
+      const ok = updateMemory(body.id, body.text);
+      return { ok, error: ok ? undefined : '这条记忆不在了', memory: loadMemory() };
+    }
+    if (path === '/api/memory/delete') {
+      const ok = deleteMemory(body.id);
+      return { ok, error: ok ? undefined : '这条记忆不在了', memory: loadMemory() };
+    }
+    if (path === '/api/memory/clear') {
+      clearMemory();
+      writeRaw(HIST_KEY, { offline: [], online: [] });
+      writeRaw(SUMMARY_KEY, { n: 0, t: stamp(false) });
+      return { ok: true, memory: [] };
+    }
+    if (path === '/api/import') {
+      try {
+        importPayload(body.data || body);
+        return { ok: true };
+      } catch (e) { return { ok: false, error: e.message || String(e) }; }
+    }
+    if (path === '/api/history/clear') {
+      const ch = u.searchParams.get('channel') === 'online' ? 'online' : 'offline';
+      const h = loadHistory();
+      h[ch] = [];
+      writeRaw(HIST_KEY, h);
+      return { ok: true, history: [] };
+    }
+    if (path === '/api/reset') { return { ok: true, state: resetState() }; }
+    if (path === '/api/upload') return upload(body);
+    if (path === '/api/touch') { if (!addTouch(body.kind)) return { ok: false, error: '未知动作' }; return { ok: true }; }
+    if (path === '/api/summary/now') {
+      try { const n = await summarizeRecent(loadConfig(), Number(body.turns || 20), 'offline'); return { ok: true, added: n }; }
+      catch (e) { return { ok: false, error: e.message || String(e) }; }
+    }
+  }
+  return { ok: false, error: '纯前端版没有这个接口：' + method + ' ' + path };
+}
+
+window.PureAPI = { request, ensureInit, version: VERSION, title: APP_TITLE };
+})();

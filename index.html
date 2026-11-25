@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="鳥籠">
+<meta name="theme-color" content="#14100e">
+<title>鸟笼</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ambient" id="ambient"></div>
+<div class="stage" id="stage">
+
+  <!-- 画面（4:3）：背景 / 立绘 / CG 都锁在这个框里，手机竖屏也不会被竖着拉长 -->
+  <div class="pic" id="pic">
+    <div class="bg" id="bg"></div>
+    <div class="bg-next" id="bgNext"></div>
+    <div class="sprite" id="sprite"></div>
+    <div class="guest-sprite" id="sprite2"><img id="sprite2img" alt=""></div>
+    <div class="near" id="near"></div>
+    <div class="cg" id="cg"></div>
+  </div>
+  <div class="vignette"></div>
+
+  <!-- 顶部 -->
+  <div class="topbar">
+    <div class="spacer"></div>
+    <button class="tbtn" id="btnMode">线上</button>
+    <button class="tbtn" id="btnReset">重置</button>
+    <button class="tbtn" id="btnHistory">历史</button>
+    <button class="tbtn" id="btnMemory">记忆</button>
+    <button class="tbtn" id="btnSettings">设置</button>
+    <button class="tbtn" id="btnMute">♪</button>
+  </div>
+
+  <!-- 线上模式：模仿 LINE 的聊天页（同一个他，只是换成手机聊天） -->
+  <div class="online" id="online">
+    <div class="line-head">
+      <div class="line-back" id="lineBack">‹</div>
+      <div class="line-ava" id="lineAva"></div>
+      <div class="line-who">
+        <div class="line-name">雅楽代 帳</div>
+        <div class="line-sub">オンライン</div>
+      </div>
+      <div class="line-ico">☰</div>
+    </div>
+    <div class="line-body" id="lineBody"></div>
+    <div class="line-composer">
+      <button class="line-plus" id="linePlus">＋</button>
+      <input type="text" id="lineInput" placeholder="メッセージを入力…" autocomplete="off">
+      <button class="line-send" id="lineSend">送信</button>
+    </div>
+    <div class="line-hint" id="lineHint"></div>
+  </div>
+
+  <!-- 对话框（照原包：名牌在框内左上，下面一句台词） -->
+  <div class="dialog" id="dialog">
+    <div class="speaker" id="speaker">雅楽代 帳</div>
+    <div class="say" id="say"></div>
+    <div class="next-dot" id="nextDot"></div>
+  </div>
+
+  <!-- 输入行（放在框外，保持框内只有台词） -->
+  <div class="composerbar">
+    <button class="icon-btn" id="btnAttach" title="发图片 / 视频 / PDF / Word / Excel / txt">＋</button>
+    <div class="attach-chip" id="chip"></div>
+    <input type="text" id="input" placeholder="说什么" autocomplete="off">
+    <button class="send ghost" id="btnRetry">重试</button>
+    <button class="send ghost" id="btnFlush">回复</button>
+    <button class="send" id="btnSend">发送</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 历史 -->
+  <div class="scrim" id="scrim"></div>
+  <div class="drawer" id="drawer">
+    <h3><span>历 史</span>
+      <span class="drawer-tabs">
+        <button class="dtab on" data-ch="offline">线下</button>
+        <button class="dtab" data-ch="online">线上</button>
+      </span>
+      <button class="drawer-x" id="drawerClose">关闭</button></h3>
+    <div class="log" id="histLog"></div>
+  </div>
+
+  <!-- 记忆：长期记忆逐条查看、编辑、删除 -->
+  <div class="drawer memdrawer" id="memDrawer">
+    <h3><span>记 忆</span><span class="mini" id="memCount"></span>
+      <button class="drawer-x" id="memClose">关闭</button></h3>
+    <div class="log memlog" id="memLog"></div>
+    <div class="memfoot">这些是每次对话都会带给他的长期记忆。改一条、删一条都只影响那一条。</div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="panel" id="panel">
+    <div class="panel-head">
+      <h2>设 置</h2>
+      <button class="btn" id="btnPanelClose">关闭</button>
+    </div>
+    <div class="panel-body">
+
+      <div class="group">
+        <h4>接入（模型接口）</h4>
+        <div class="field">
+          <label>接口地址 Base URL</label>
+          <input type="text" id="fBase" placeholder="https://api.xxx.com/v1">
+          <div class="hint">OpenAI 兼容地址，填到 /v1 为止即可；程序自己补 /chat/completions。</div>
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="fKey" placeholder="sk-...">
+          <div class="hint" id="keyHint">只存在这台设备的浏览器里，不上传；换设备或清缓存要重新填。</div>
+        </div>
+        <div class="field">
+          <label>模型名 Model</label>
+          <input type="text" id="fModel" list="modelList" placeholder="gpt-4o-mini / deepseek-chat / ...">
+          <datalist id="modelList"></datalist>
+          <div class="hint"><button class="mini-btn" id="btnModels">拉取可用模型</button> <span class="mini" id="modelsOut"></span></div>
+        </div>
+        <button class="btn" id="btnTest">测试连接</button>
+        <span class="mini" id="testOut"></span>
+        <div class="field">
+          <label>最大输出 tokens</label>
+          <input type="number" id="fMaxTok" min="200" max="4000" step="100">
+          <div class="hint">带「思考」的模型会先花几百 token 想，正文容易被挤成空。这里调到 1200 以上更稳。</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>时间锚点</h4>
+        <div class="field">
+          <select id="fTimeline">
+            <option value="A">A · 待宵亭的日常（绑架之前）</option>
+            <option value="B">B · 车内的邀请（已查明八寻身份）</option>
+            <option value="C">C · 同居之后（END1）</option>
+            <option value="D">D · 婚约取消那天</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>自定义（写了就优先于上面）</label>
+          <textarea id="fTimelineCustom" placeholder="例：同居第三年的夏天"></textarea>
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>画面</h4>
+        <div class="field">
+          <label>默认背景</label>
+          <select id="fBg"></select>
+        </div>
+        <div class="field">
+          <label>默认表情</label>
+          <select id="fFace"></select>
+        </div>
+        <div class="field">
+          <label>默认距离</label>
+          <select id="fDist">
+            <option value="far">远景（半身立绘）</option>
+            <option value="near">近景（整屏特写）</option>
+          </select>
+          <div class="hint">只是默认值。对话里他自己会按剧情凑近或退回远景；这里选「近景」时，表情预览用的就是近景那套图。</div>
+        </div>
+        <div class="field">
+          <label>点他一下</label>
+          <div class="hint">直接在画面上点他的头（摸摸头）、脸、或衣角肩膀，他会当场有反应，也会记住刚才被碰过。</div>
+        </div>
+        <div class="field">
+          <label>服装</label>
+          <input type="text" value="学生制服（原包仅此一套）" disabled>
+        </div>
+        <div class="hint">这里选的是<b>默认值</b>。对话中他会自己按剧情换背景、换表情、换歌，不用手动拨。</div>
+      </div>
+
+      <div class="group">
+        <h4>声音</h4>
+        <div class="field">
+          <label>BGM</label>
+          <select id="fBgm"></select>
+        </div>
+        <div class="field">
+          <label>音量 <span class="mini" id="volHint">60%</span></label>
+          <input type="range" id="fVol" min="0" max="100" step="5">
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>发送</h4>
+        <div class="field">
+          <label>连发等待 <span class="mini">秒</span></label>
+          <input type="number" id="fDelay" min="0" max="60" step="1">
+          <div class="hint">你打一句、再打一句，等这么多秒没新消息，他才一起回。填 0 就是发一条回一条。默认 8。</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>文字</h4>
+        <div class="field">
+          <label>台词播放</label>
+          <select id="fAuto">
+            <option value="1">自动（一句接一句，说完自己翻）</option>
+            <option value="0">手动（点对话框 / 空格，翻下一句）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>打字速度 <span class="mini" id="speedHint">30ms / 字（原包 chSpeed）</span></label>
+          <input type="range" id="fSpeed" min="5" max="100" step="5">
+        </div>
+        <div class="field">
+          <label>正文字号 <span class="mini" id="fontHint">24px（原包 defaultFontSize）</span></label>
+          <input type="range" id="fFont" min="16" max="32" step="1">
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>备份</h4>
+        <div class="field">
+          <button class="btn" id="btnExport">导出数据（JSON）</button>
+          <div class="hint">包含设置、记忆、历史、当前场景；不含 API Key。</div>
+        </div>
+        <div class="field">
+          <button class="btn" id="btnImport">导入数据（选择 JSON）</button>
+          <input type="file" id="importFile" hidden accept=".json,application/json">
+          <div class="hint">会覆盖当前的设置、记忆、历史与场景；API Key 保留本机现在这把。</div>
+        </div>
+        <span class="mini" id="backupOut"></span>
+      </div>
+
+      <div class="group">
+        <h4>记忆与上下文</h4>
+        <div class="field">
+          <label>聊天上下文条数 <span class="mini">（每次发给模型的最近多少条对话）</span></label>
+          <input type="number" id="fHist" min="2" max="40" step="2">
+          <div class="hint">越大他越记得刚才说过什么，但提示词更长、更慢。默认 12。</div>
+        </div>
+        <div class="field">
+          <label>记忆总结间隔 <span class="mini">（每多少条对话自动总结一次）</span></label>
+          <input type="number" id="fSummary" min="5" max="200" step="5">
+          <div class="hint">填 20 就是每聊 20 条，自动从里面提炼长期记忆（她的近况、约定、重要事件）。填 0 关闭自动总结。</div>
+        </div>
+        <div class="field">
+          <button class="btn" id="btnClearHist">删除上下文（只删对话流水，记忆保留）</button>
+        </div>
+        <div class="field">
+          <button class="btn" id="btnClearMem">清空记忆（记忆和上下文都清掉）</button>
+        </div>
+        <span class="mini" id="memOut"></span>
+      </div>
+
+    </div>
+    <div class="panel-foot">
+      <div class="status" id="saveStatus"></div>
+      <button class="btn primary" id="btnSave">保存</button>
+    </div>
+  </div>
+
+  <!-- 载入 -->
+  <div class="splash" id="splash">正 在 打 开 那 扇 门 …</div>
+
+  <audio id="bgm" preload="auto"></audio>
+  <input type="file" id="file" hidden multiple
+         accept="image/*,video/*,.pdf,.docx,.doc,.xlsx,.xls,.txt,.md,.csv">
+</div>
+
+<script src="pure-data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
