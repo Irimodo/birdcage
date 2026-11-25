@@ -58,10 +58,18 @@ function fitStage() {
   const portrait = h > w * 1.2;
   const touch = matchMedia('(pointer: coarse)').matches || MOBILE_UA || Math.min(w, h) < 640;
   const safe = safeInsets();
+  // 主屏幕 PWA 里 iOS 有时会把 safe-area-inset-top 报成 0，
+  // 这时按刘海屏常见高度留出至少 64px，避免顶栏和系统状态栏重叠。
+  const standalone = navigator.standalone === true ||
+    matchMedia('(display-mode: standalone)').matches ||
+    matchMedia('(display-mode: fullscreen)').matches;
+  const safeTop = (standalone && touch && safe.top < 40) ? 64 : safe.top;
+  const safeBottom = (standalone && touch && safe.bottom < 10) ? 24 : safe.bottom;
   // 舞台整体是 scale(s) 的，安全区要换成舞台内坐标，否则会被一起缩小
-  stage.style.setProperty('--safe-top-local', (safe.top / s).toFixed(1) + 'px');
-  stage.style.setProperty('--safe-bottom-local', (safe.bottom / s).toFixed(1) + 'px');
+  stage.style.setProperty('--safe-top-local', (safeTop / s).toFixed(1) + 'px');
+  stage.style.setProperty('--safe-bottom-local', (safeBottom / s).toFixed(1) + 'px');
   stage.style.setProperty('--scale', s.toFixed(4));
+  document.body.classList.toggle('standalone', standalone);
   document.body.classList.toggle('portrait', portrait);
   document.body.classList.toggle('touch', touch);
   if (portrait) {
@@ -70,8 +78,8 @@ function fitStage() {
     stage.style.marginTop = '0px';
     stage.style.top = '0px';
     stage.style.transformOrigin = 'top center';
-    const topbarH = (touch ? 62 : 46) + safe.top;
-    const bottomH = (touch ? 72 : 56) + safe.bottom;
+    const topbarH = (touch ? 62 : 46) + safeTop;
+    const bottomH = (touch ? 72 : 56) + safeBottom;
     const avail = Math.max(200, h - topbarH - bottomH);
     // 4:3 窗口：高度最多占「顶栏以下、输入行以上」的 94%，宽度可以超出屏幕、左右裁一点
     const picPx = Math.min(Math.round((h - topbarH) * 0.78), Math.round(avail * 0.94));

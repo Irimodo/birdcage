@@ -323,7 +323,7 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 }
 .drawer.open { display: flex; }
 .drawer h3 {
-  margin: 0; padding: 14px 20px;
+  margin: 0; padding: calc(14px + var(--safe-top-local, 0px)) 20px 14px;
   font-size: 14px; font-weight: 400; letter-spacing: .3em;
   color: var(--gold);
   border-bottom: 1px solid rgba(200,169,122,.18);
@@ -407,7 +407,7 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 .panel.open { right: 0; }
 .panel-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
+  padding: calc(14px + var(--safe-top-local, 0px)) 18px 14px;
   border-bottom: 1px solid rgba(200,169,122,.18);
 }
 .panel-head h2 { margin: 0; font-size: 15px; font-weight: 400; letter-spacing: .25em; color: var(--gold); }
