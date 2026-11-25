@@ -234,10 +234,11 @@ function setBgm(id) {
   const it = bgmItem(id);
   if (!it) return;
   const url = assetUrl(it.file);
-  if (audio.dataset.src === url) return;
+  if (audio.dataset.src === url && audio.src) return;
   audio.dataset.src = url;
+  // 静音时只记地址，不把 7～8MB 的 BGM 拉下来；等真的取消静音再加载。
+  if (audio.muted) return;
   audio.src = url;
-  if (S.cfg.ui.muted) return;
   audio.play().catch(() => { /* 等第一次点击 */ });
 }
 
@@ -302,13 +303,16 @@ function pushState(patch) {
 
 function applyState(patch, instant) {
   if (!patch) return;
+  // 先把静音状态放好，再决定要不要加载 BGM
+  if (patch.muted !== undefined) {
+    audio.muted = !!patch.muted;
+  }
   if (patch.background) setBackground(patch.background, instant);
   if (patch.expression) setSprite(patch.expression, instant);
   if (patch.bgm) setBgm(patch.bgm);
   if (patch.cg !== undefined) showCg(patch.cg);
-  if (patch.muted !== undefined) {
-    audio.muted = !!patch.muted;
-    if (!patch.muted && S.bgmStarted) audio.play().catch(() => {});
+  if (patch.muted !== undefined && !patch.muted && S.bgmStarted) {
+    audio.play().catch(() => {});
   }
   S.state = Object.assign({}, S.state, patch);
   if (patch.guest !== undefined) setGuest(S.state.guest, S.guestFace || 'calm', instant);
