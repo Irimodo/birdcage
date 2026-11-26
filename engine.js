@@ -159,14 +159,8 @@ async function ensureInit() {
 
 /* ---------------- 配置 / 状态 ---------------- */
 function loadConfig() {
-  const cfg = deepMerge(DEFAULT_CONFIG, readRaw(CFG_KEY, {}));
-  // 一次性迁移：旧版本默认 20 条总结一次；按现在的要求改成 30 轮。
-  if (cfg.prompt && Number(cfg.prompt.summary_every) === 20 && cfg.prompt.diary !== true) {
-    cfg.prompt.summary_every = 30;
-    cfg.prompt.diary = true;
-    writeRaw(CFG_KEY, cfg);
-  }
-  return cfg;
+  // 总结间隔完全跟设置里的「记忆总结间隔」走：填 30 就 30 轮一次，填 50 就 50 轮一次，填 0 关闭。
+  return deepMerge(DEFAULT_CONFIG, readRaw(CFG_KEY, {}));
 }
 function publicConfig(cfg) {
   const c = clone(cfg || loadConfig());
