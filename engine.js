@@ -23,13 +23,13 @@ const DEFAULT_CONFIG = {
   },
   timeline: 'A',
   timeline_custom: '',
-  prompt: { max_chars: 34000, history_turns: 12, memory_top_n: 12, summary_every: 20 },
+  prompt: { max_chars: 34000, history_turns: 12, memory_top_n: 12, summary_every: 30 },
   features: { web_search: false, attachments: true },
 };
 
 const STATE_DEFAULT = {
   background: 'bg_010', expression: 'normal', dist: 'far', outfit: 'uniform',
-  cg: '', bgm: 'bgm_01', muted: false, guest: '', pov: 'user',
+  cg: '', bgm: 'bgm_01', muted: false, guest: '', pov: 'user', apart: false,
 };
 
 const TIMELINE_BLOCKS = {
@@ -37,13 +37,15 @@ const TIMELINE_BLOCKS = {
   B: '【时间锚点 B · 车内的邀请】已经查明「橘八寻」这个律师并不存在。帐第二次要实雪住进雅乐代家，她拒绝了。帐与平井镜太郎已经和解、互称名字。绑架事件尚未发生。',
   C: '【时间锚点 C · 同居之后】实雪已经住进雅乐代家，辞掉了咖啡屋的工作。帐肩上留下了枪伤，八寻逃走后音信全无。她叫他「夫君大人」。两人已经互通过心意。',
   D: '【时间锚点 D · 婚约取消那天】九重家已破产，父母离世，实雪刚从纯喫茶说出「请和我做朋友吧」。帐回家后砸了墙，还没有向她之外的任何人摊牌。',
+  E: '【时间锚点 E · 小时候】两人还是孩子，约九到十岁。實雪和帳在雅楽代家的庭前、走廊或花园里度过一段童年时光；帳还没有长成后来的少爷，实雪也还是个孩子。这个锚点只能写童年日常、玩耍、约定和孩童能理解的情绪，不要写婚约、成人恋爱、身体接触或任何性暗示。',
 };
 
-const SUMMARY_PROMPT = `【记忆整理】你是长期记忆的整理员。下面是一段角色（雅楽代 帳）与用户（九重 実雪）的最近对话。
-请只输出记忆条目，每行一条，格式严格为 \`kind|weight|text\`，最多 6 条，不要编号、不要解释、不要总结句。
-kind 取 fact / event / prefer / promise / mood；weight 1-5（越重要越高）。
-text 用第三人称陈述，只写关于实雪的稳定信息或两人关系的关键点（她的近况与身体状况、喜好与厌恶、做出的约定、发生的重要事件、情绪转折），不要写寒暄和闲聊。
-直接重复已有信息没有意义，宁少勿滥；确实没有值得记的就只输出 \`fact|1|-\`。`;
+const SUMMARY_PROMPT = `【记忆整理 · 帳的日记】你是长期记忆的整理员。下面是一段角色（雅楽代 帳）与用户（九重 実雪）的最近对话。
+请只写 1 条长期记忆，格式严格为 \`kind|weight|text\`，只输出这一行；不要编号、不要解释、不要分成多条。
+kind 取 event / mood / promise / prefer / fact；weight 1-5（越重要越高）。
+text 必须用雅楽代帳的第一人称「我」写，像他写给自己看的日记：先写今天实际发生了什么，再写一个他当面没说出口的细节或心情。60-110 个汉字，短句，克制，不要总结陈词，不要分析关系，不要写「她让我明白」这种升华。
+这是日记，不是第三人称摘要：不要写「実雪如何如何」的旁观句；日期和时间由界面显示，正文不要重复年月日。
+只写这段对话里真实出现过的事；没有值得留下的内容时，只输出 \`fact|1|-\`。`;
 
 const HISTORY_BAD_RE = /吃撑|放你回去|做好觉悟|覚悟して|ご主人様|主人大人|你的狗|君の犬|犬にな|牙だけ|獠牙|去勢|絶育|押し倒|ペット/;
 const WIFE_WORD_RE = /妻子|老婆|奥さん|お嫁さん|俺の妻|我的妻子/;
@@ -156,7 +158,16 @@ async function ensureInit() {
 }
 
 /* ---------------- 配置 / 状态 ---------------- */
-function loadConfig() { return deepMerge(DEFAULT_CONFIG, readRaw(CFG_KEY, {})); }
+function loadConfig() {
+  const cfg = deepMerge(DEFAULT_CONFIG, readRaw(CFG_KEY, {}));
+  // 一次性迁移：旧版本默认 20 条总结一次；按现在的要求改成 30 轮。
+  if (cfg.prompt && Number(cfg.prompt.summary_every) === 20 && cfg.prompt.diary !== true) {
+    cfg.prompt.summary_every = 30;
+    cfg.prompt.diary = true;
+    writeRaw(CFG_KEY, cfg);
+  }
+  return cfg;
+}
 function publicConfig(cfg) {
   const c = clone(cfg || loadConfig());
   c.api = c.api || {};
@@ -179,7 +190,11 @@ function tempConfig(patch) {
   return cfg;
 }
 
-function loadState() { return deepMerge(STATE_DEFAULT, readRaw(STATE_KEY, {})); }
+function loadState() {
+  const st = deepMerge(STATE_DEFAULT, readRaw(STATE_KEY, {}));
+  if (!bgItem(st.background)) st.background = STATE_DEFAULT.background;
+  return st;
+}
 function saveState(patch) {
   const next = deepMerge(loadState(), patch || {});
   writeRaw(STATE_KEY, next);
@@ -196,7 +211,7 @@ function resetState() {
     outfit: ui.outfit || 'uniform',
     bgm: ui.bgm || 'bgm_01',
     muted: !!old.muted,
-    guest: '', cg: '', pov: 'user',
+    guest: '', cg: '', pov: 'user', apart: false,
   });
   writeRaw(STATE_KEY, st);
   return st;
@@ -363,13 +378,17 @@ function relationStage(cfg) {
   if (custom) {
     if (/同居|婚后|结婚|夫妻|夫人|夫君|嫁/.test(custom)) stage = 'C';
     else if (/婚约取消|取消婚约|做朋友|分手/.test(custom)) stage = 'D';
+    else if (/小时候|幼|童年|回忆|孩子/.test(custom)) stage = 'E';
     else stage = 'A';
   }
-  return ['A', 'B', 'C', 'D'].includes(stage) ? stage : 'A';
+  return ['A', 'B', 'C', 'D', 'E'].includes(stage) ? stage : 'A';
 }
 function relationRules(cfg) {
   const stage = relationStage(cfg);
   const historyRule = '旧对话里如果出现过“妻子／老婆／奥さん／お嫁さん”的句子，那是失败的即兴，不要模仿、不要接着玩这个梗。';
+  if (stage === 'E') {
+    return '【关系阶段 · 小时候（硬规则）】两人都是孩子（約九到十岁），不是婚约对象，不是恋人。只写童年玩伴之间的亲近：一起玩、分享点心、拉手跑过庭院、约好下次见面。不要写婚约、求婚、占有欲、成人恋爱、亲吻或身体越界。';
+  }
   if (stage === 'C') {
     return '【关系阶段 · 同居之后（硬规则）】\n' +
       '实雪已经住进雅楽代家，两人互通过心意；可以偶尔用「奥さん」「俺の妻」这种轻的、带笑的称呼。\n' +
@@ -383,19 +402,36 @@ function relationRules(cfg) {
     '婚前的亲近方式是：来店里看她、请客、拿旧事逗她、问她“俺のこと、どう思ってる？”、被拒绝时笑着说“じゃあ、今日はここまでにしとくよ”。\n' +
     historyRule;
 }
+function presenceRules(st) {
+  if (st.apart) {
+    return '【空间关系 · 分开｜硬规则】你们现在不在同一地点，彼此看不见对方。\n' +
+      '不要写对方就在身边、不要写对方站在房间里或伸手碰到你；对方只能通过电话、短信、回忆、书信出现。\n' +
+      '「我」视角只写自己所在的地方发生的事；「帳」视角只写他在自己的地方发生的事。切换视角不会把两个人瞬移到一起。\n' +
+      '如果这一轮发生了告别、他先走、你回家、两人分开，就在回复最后单独一行写 `@@STATE apart=true`；如果重逢、回到同一地点，就写 `@@STATE apart=false`。不要只在旁白里说分开。';
+  }
+  return '【空间关系 · 同处】你们现在在同一地点，可以看见对方、听见对方说话；但仍要遵守当前视角的心理隔离。\n' +
+    '如果这一轮发生告别、他先走、你回家、两人分开，就在回复最后单独一行写 `@@STATE apart=true`；如果重逢、回到同一地点，就写 `@@STATE apart=false`。不要只在旁白里说分开。';
+}
+function ambientRules(bgLabel) {
+  const publicScene = /(咖啡|喫茶|店|街|车站|公園|公园|市场|餐廳|餐厅|食堂|教会|教室|学园|学園|等待室|大厅)/.test(bgLabel || '');
+  if (!publicScene) return '【路人／环境声｜可选】当前不是公共场所，不要为了热闹硬加路人；把注意力留在两人的对话上。';
+  return '【路人／环境声｜可选，不是每轮都要】当前在公共场所，可以偶尔插入 1 句路人的自然台词，让场景有生活感。\n' +
+    '格式必须单独一行，直接写「客人1：请给我一杯咖啡」这种内容，但整行不要再套一层「」引号；名字只写客人1／客人2／路人／店员／常客，不要给路人写心理，不要给路人立绘。\n' +
+    '路人只做环境声，不推进主线、不打断两人的关键对话；如果这一轮正在表白、争吵、受伤、亲密或剧情紧张，就完全不要加。';
+}
 function povRules(pov) {
   if (pov === 'char') {
     return '【当前视角 · 雅楽代帳（我）的第一人称｜硬规则，优先于角色人设里的视角说明】\n' +
       '旁白里的「我」＝帳，実雪是「她」。不要写「帳：……」这种第三人称。\n' +
       '这一视角只允许帳的心理、感官和判断；実雪的心理不可见——不要输出她的括号心声，也不要用旁白替她解释她在想什么。她的情绪只能通过你看见的台词、表情、动作表现。\n' +
       '用户发来的文字是帳视角下的旁白／动作，不是実雪的台词；把它当作正在发生的事，不要当作用户在说话，也不要复述它。\n' +
-      '帳自己的立绘不在画面里（你就在他身体里），不要写「我看着自己的脸」或「我的立绘」。';
+      '画面里可以看见帳的立绘；但旁白里的我仍然是帳，不要写「我看着自己的脸」或描述自己的立绘。';
   }
   return '【当前视角 · 九重実雪（我）的第一人称｜硬规则，优先于角色人设里的视角说明】\n' +
     '旁白里的「我」＝実雪，帳是「他」。不要写「実雪：……」这种第三人称。\n' +
     '这一视角只允许実雪的心理、感官和判断；帳的心理不可见——不要输出帳的括号心声，也不要用旁白直接解释他在想什么。他的情绪只能通过你看见的台词、表情、动作表现。\n' +
     '用户发来的文字是実雪的动作／台词；不要在回复里替実雪补心理，也不要复述她刚说的话。\n' +
-    '画面里可以看见帳的立绘。';
+    '同处时画面里可以看见帳的立绘；如果空间关系是分开，则看不到他。';
 }
 function manifestDigest() {
   const man = FS.manifest || {};
@@ -463,7 +499,7 @@ function buildSystemBlocks(cfg, channel, pov) {
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
-    (channel === 'online' ? '' : povRules(pov || st.pov)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
+    (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
     manifestDigest(), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
@@ -657,6 +693,7 @@ function splitReply(raw) {
         else if (k === 'cg') statePatch.cg = v || '';
         else if (k === 'dist' || k === 'distance') statePatch.dist = v || '';
         else if (k === 'guest' || k === 'cameo') statePatch.guest = v || '';
+        else if (k === 'apart' || k === 'separate' || k === 'together') statePatch.apart = v || '';
       });
       return;
     }
@@ -722,6 +759,7 @@ function sanitizeStatePatch(patch) {
   else if (g && (man.guests || {})[g]) out.guest = g;
   if (bgmIds.has(patch.bgm)) out.bgm = patch.bgm;
   if ('cg' in patch) out.cg = new Set((man.cg || []).map((x) => x.id)).has(patch.cg) ? patch.cg : '';
+  if ('apart' in patch) out.apart = (patch.apart === true || patch.apart === 'true' || patch.apart === 1 || patch.apart === '1');
   return out;
 }
 
@@ -744,7 +782,7 @@ function parseMemoLines(raw) {
 async function summarizeRecent(cfg, turns, channel) {
   const lines = recentHistory(turns, channel, relationStage(cfg));
   if (!lines.length) return 0;
-  const transcript = lines.map((m) => (m.role === 'user' ? '実雪：' : '帳：') + m.content).join('\n');
+  const transcript = '【现在】' + nowText() + '\n' + lines.map((m) => (m.role === 'user' ? '実雪：' : '帳：') + m.content).join('\n');
   try {
     const raw = await callModel(cfg, [{ role: 'system', content: SUMMARY_PROMPT }, { role: 'user', content: transcript }], 90000);
     return addMemory(parseMemoLines(raw));
@@ -814,7 +852,8 @@ async function chat(body) {
   const applied = sanitizeStatePatch(parsed.statePatch);
   if (Object.keys(FS.manifest.guests || {}).length) applied.guest = replyMentionsGuest(reply);
   if (Object.keys(applied).length) saveState(applied);
-  addMemory(parsed.memos);
+  // 记忆只由每 30 轮的自动总结写入；忽略模型偶尔漏出的 @@MEMO，避免又变成一句话一条。
+  // addMemory(parsed.memos);
   appendChat('user', histText, { pov }, channel);
   appendChat('assistant', reply, Object.assign({ pov }, Object.keys(applied).length ? { state: applied } : null), channel);
   if (channel !== 'online') { clearTouches(); clearScene(); }

@@ -145,7 +145,16 @@
             <option value="B">B · 车内的邀请（已查明八寻身份）</option>
             <option value="C">C · 同居之后（END1）</option>
             <option value="D">D · 婚约取消那天</option>
+            <option value="E">E · 小时候（童年回忆）</option>
           </select>
+        </div>
+        <div class="field">
+          <label>现在和帳</label>
+          <select id="fApart">
+            <option value="0">同处一室（可以看见他）</option>
+            <option value="1">分开（不在一起，我视角不显示他）</option>
+          </select>
+          <div class="hint">分开时「我」视角不显示帳的立绘；切到「帳」视角才会看到他。</div>
         </div>
         <div class="field">
           <label>自定义（写了就优先于上面）</label>
@@ -244,9 +253,9 @@
           <div class="hint">越大他越记得刚才说过什么，但提示词更长、更慢。默认 12。</div>
         </div>
         <div class="field">
-          <label>记忆总结间隔 <span class="mini">（每多少条对话自动总结一次）</span></label>
+          <label>记忆总结间隔 <span class="mini">（每多少轮自动总结一次）</span></label>
           <input type="number" id="fSummary" min="5" max="200" step="5">
-          <div class="hint">填 20 就是每聊 20 条，自动从里面提炼长期记忆（她的近况、约定、重要事件）。填 0 关闭自动总结。</div>
+          <div class="hint">填 30 就是每聊 30 轮（一问一答才算一轮），自动写成一篇帐的日记式记忆。填 0 关闭自动总结。</div>
         </div>
         <div class="field">
           <button class="btn" id="btnClearHist">删除上下文（只删对话流水，记忆保留）</button>
@@ -268,6 +277,7 @@
   <div class="splash" id="splash">正 在 打 开 那 扇 门 …</div>
 
   <audio id="bgm" preload="none" muted></audio>
+  <audio id="keepAlive" src="assets/ui/silence.wav" loop preload="auto"></audio>
   <input type="file" id="file" hidden multiple
          accept="image/*,video/*,.pdf,.docx,.doc,.xlsx,.xls,.txt,.md,.csv">
 </div>

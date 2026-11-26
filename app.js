@@ -5,6 +5,7 @@ const stage = $('#stage');
 const inputEl = $('#input');
 const btnSend = $('#btnSend');
 const audio = $('#bgm');
+const keepAlive = $('#keepAlive');
 
 const S = {
   cfg: null,
@@ -221,8 +222,13 @@ function setBackground(id, instant) {
   S.bgIndex++;
 }
 
+function activeSpriteGroup() {
+  const base = (S.manifest || {}).sprite || {};
+  if (String((S.cfg || {}).timeline || '').toUpperCase() === 'E' && base.child) return base.child;
+  return base;
+}
 function setSprite(key, instant) {
-  const bust = (S.manifest.sprite || {}).bust || {};
+  const bust = activeSpriteGroup().bust || {};
   const item = bust[key] || bust.normal;
   if (!item) return;
   const el = $('#sprite');
@@ -285,8 +291,8 @@ function setGuest(id, faceKey, instant) {
 function setNear(dist, faceKey, instant) {
   const el = $('#near');
   const bust = $('#sprite');
-  const near = (S.manifest.sprite || {}).near || {};
-  if (currentPov() === 'char' || dist !== 'near' || S.state.guest) {
+  const near = activeSpriteGroup().near || {};
+  if (String((S.cfg || {}).timeline || '').toUpperCase() === 'E' || currentPov() === 'char' || dist !== 'near' || S.state.guest) {
     el.classList.remove('show');
     bust.classList.remove('away');
     return;
@@ -328,6 +334,9 @@ function currentPov() { return (S.state && S.state.pov) === 'char' ? 'char' : 'u
 function syncPovUi(pov) {
   const isChar = pov === 'char';
   document.body.classList.toggle('pov-char', isChar);
+  document.body.classList.toggle('pov-user', !isChar);
+  document.body.classList.toggle('apart', !!(S.state && S.state.apart));
+  document.body.classList.toggle('timeline-e', String((S.cfg || {}).timeline || '').toUpperCase() === 'E');
   const b = $('#btnPov');
   if (b) {
     b.textContent = isChar ? '帳' : '我';
@@ -343,16 +352,18 @@ function syncPovUi(pov) {
 }
 async function preloadStateImages(patch) {
   const pov = patch.pov === 'char' ? 'char' : (patch.pov === 'user' ? 'user' : currentPov());
+  const apart = patch.apart === undefined ? !!(S.state && S.state.apart) : !!patch.apart;
+  const group = activeSpriteGroup();
   const urls = [];
   if (patch.background) { const it = bgItem(patch.background); if (it) urls.push(assetUrl(it.file)); }
-  if (pov !== 'char') {
+  if (pov === 'char' || !apart) {
     if (patch.expression) {
-      const bust = ((S.manifest || {}).sprite || {}).bust || {};
+      const bust = group.bust || {};
       const it = bust[patch.expression] || bust.normal;
       if (it) urls.push(assetUrl(it.file));
     }
-    if (patch.dist === 'near' && !patch.guest) {
-      const near = ((S.manifest || {}).sprite || {}).near || {};
+    if (pov === 'user' && !apart && patch.dist === 'near' && !patch.guest) {
+      const near = group.near || {};
       const it = near[patch.expression] || near.normal;
       if (it) urls.push(assetUrl(it.file));
     }
@@ -375,7 +386,8 @@ async function applyState(patch, instant) {
     audio.muted = !!patch.muted;
   }
   if (patch.background) setBackground(patch.background, instant);
-  if (patch.expression && currentPov() !== 'char') setSprite(patch.expression, instant);
+  const nextApart = patch.apart === undefined ? !!(S.state && S.state.apart) : !!patch.apart;
+  if (patch.expression && !(currentPov() === 'user' && nextApart)) setSprite(patch.expression, instant);
   if (patch.bgm) setBgm(patch.bgm);
   if (patch.cg !== undefined) showCg(patch.cg);
   if (patch.muted !== undefined && !patch.muted && S.bgmStarted) {
@@ -384,6 +396,7 @@ async function applyState(patch, instant) {
   S.state = Object.assign({}, S.state, patch);
   if (patch.guest !== undefined) setGuest(S.state.guest, S.guestFace || 'calm', instant);
   syncPovUi(S.state.pov || 'user');
+  document.body.classList.toggle('apart', !!S.state.apart);
   setNear(S.state.dist || 'far', S.state.expression || 'normal', instant);
   if (S.mode === 'online') paintAvatar();
 }
@@ -393,11 +406,24 @@ async function setPov(pov) {
   const next = pov === 'char' ? 'char' : 'user';
   S.state.pov = next;
   syncPovUi(next);
-  if (next === 'user') {
+  setSprite(S.state.expression || 'normal', true);
+  setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
+  if (next === 'char') $('#near').classList.remove('show');
+  await pushState({ pov: next });
+}
+
+function setApart(apart) {
+  const next = !!apart;
+  S.state.apart = next;
+  syncPovUi(currentPov());
+  if (!next) {
     setSprite(S.state.expression || 'normal', true);
     setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
+  } else {
+    const near = $('#near');
+    if (near) near.classList.remove('show');
   }
-  await pushState({ pov: next });
+  pushState({ apart: next });
 }
 
 /* ---------------- 文本：名牌 + 一句台词 ---------------- */
@@ -422,6 +448,13 @@ function parseLine(line) {
     const gid = (n === '鏡太郎' || n === '镜太郎') ? 'kagami' : (n === '暁' ? 'father' : 'mother');
     return { who: GUEST_NAMES[gid], guest: gid, face: (m[3] || 'calm').toLowerCase(),
       text: raw.slice(m[0].length), kind: 'say' };
+  }
+  const wrapped = raw.trim().match(/^[「『]([\s\S]*)[」』]$/);
+  const scan = wrapped ? wrapped[1] : raw;
+  const amb = scan.match(/^(客人\s*[0-9０-９一二三四五六七八九十A-Za-z]+|路人(?:\s*[甲乙丙丁A-Za-z0-9０-９]*)?|店員|店员|常客)\s*[：:]\s*/);
+  if (amb) {
+    const txt = scan.slice(amb[0].length).trim().replace(/^[「『]/, '').replace(/[」』]$/, '');
+    return { who: amb[1].replace(/\s+/g, ''), guest: '', face: null, text: txt, kind: 'say', ambient: true };
   }
   const t = raw.trim();
   if (/^[「『]/.test(t)) return { who: NAME_HIM, guest: '', face: null, text: t, kind: 'say' };
@@ -448,7 +481,7 @@ function renderHistory(pairs, target) {
       const act = isUser && (/^[（(]/.test(s) || charPov); // 她自己的动作 / 帳视角旁白都不挂名字
       const pl = act ? { who: '', text: s } : (isUser ? { who: NAME_ME, text: s } : parseLine(s));
       const d = document.createElement('div');
-      d.className = 'hrow ' + (pl.who ? (isUser ? 'me' : 'him') : 'nar');
+      d.className = 'hrow ' + (isUser ? (pl.who ? 'me' : 'nar') : (pl.ambient ? 'npc' : (pl.who ? 'him' : 'nar')));
       d.textContent = (pl.who ? pl.who + '：' : '') + pl.text;
       target.appendChild(d);
     });
@@ -613,11 +646,13 @@ async function playReply(reply) {
       S.guestFace = it.face;
       setGuest(it.guest, it.face);
       setSpeaker(it.who);
+    } else if (it.ambient) {
+      setSpeaker(it.who);
     } else {
       if (S.state.guest) setGuest(S.state.guest, S.guestFace || 'calm');
       setSpeaker(it.kind === 'say' || it.kind === 'inner' ? NAME_HIM : '');
     }
-    await typeText(it.text, it.kind === 'say' ? 'say' : (it.kind === 'nar' ? 'nar' : 'inner'));
+    await typeText(it.text, it.ambient ? 'env' : (it.kind === 'say' ? 'say' : (it.kind === 'nar' ? 'nar' : 'inner')));
     if (i < items.length - 1) {
       if (manual) await waitClick();
       else await pause(900);
@@ -899,7 +934,7 @@ inputEl.addEventListener('keydown', (e) => {
 
 /* ---------------- 线上模式（LINE 风格的聊天页） ---------------- */
 function bustUrl(face) {
-  const bust = ((S.manifest || {}).sprite || {}).bust || {};
+  const bust = activeSpriteGroup().bust || {};
   const item = bust[face] || bust.normal;
   return item ? assetUrl(item.file) : '';
 }
@@ -930,7 +965,7 @@ function showLastLine(hist) {
     setGuest(last.guest, last.face);
   }
   const el = sayEl();
-  el.className = 'say ' + (last.kind === 'say' ? 'say' : (last.kind === 'nar' ? 'nar' : 'inner'));
+  el.className = 'say ' + (last.ambient ? 'env' : (last.kind === 'say' ? 'say' : (last.kind === 'nar' ? 'nar' : 'inner')));
   el.textContent = last.text || '';
 }
 
@@ -1123,6 +1158,12 @@ function renderMemory() {
   }
   list.forEach((it) => box.appendChild(memoryRow(it)));
 }
+function memoryTime(t) {
+  const m = String(t || '').match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+  if (!m) return t || '';
+  return m[1] + '年' + Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5];
+}
+
 function memoryRow(it) {
   const row = document.createElement('div');
   row.className = 'mrow';
@@ -1133,7 +1174,7 @@ function memoryRow(it) {
   kind.textContent = MEM_KIND[it.kind] || '事实';
   const time = document.createElement('span');
   time.className = 'mtime';
-  time.textContent = it.t || '';
+  time.textContent = memoryTime(it.t);
   const weight = document.createElement('span');
   weight.className = 'mweight';
   weight.textContent = '★'.repeat(Math.max(1, Math.min(5, Number(it.weight) || 3)));
@@ -1212,6 +1253,7 @@ function fillPanel() {
   $('#fMaxTok').value = c.api.max_tokens || 1200;
   $('#fTimeline').value = c.timeline || 'A';
   $('#fTimelineCustom').value = c.timeline_custom || '';
+  $('#fApart').value = (S.state && S.state.apart) ? '1' : '0';
   $('#fVol').value = Math.round((c.ui.bgm_volume ?? 0.6) * 100);
   $('#volHint').textContent = $('#fVol').value + '%';
   $('#fSpeed').value = c.ui.typing_speed ?? 30;
@@ -1224,7 +1266,7 @@ function fillPanel() {
   $('#fBgm').value = c.ui.bgm || 'bgm_01';
   const pr = c.prompt || {};
   $('#fHist').value = pr.history_turns ?? 12;
-  $('#fSummary').value = pr.summary_every ?? 20;
+  $('#fSummary').value = pr.summary_every ?? 30;
   $('#memOut').textContent = '';
   $('#testOut').textContent = '';
   $('#saveStatus').textContent = '';
@@ -1255,6 +1297,7 @@ $('#fDist').onchange = () => {
   setNear(d, S.state.expression || $('#fFace').value || 'normal');
 };
 $('#fBgm').onchange = () => { setBgm($('#fBgm').value); startAudio(); };
+$('#fApart').onchange = () => setApart($('#fApart').value === '1');
 
 $('#btnModels').onclick = async () => {
   const out = $('#modelsOut');
@@ -1337,6 +1380,8 @@ $('#btnSave').onclick = async () => {
     S.state.expression = face;
     S.state.dist = dist;
     S.state.bgm = bgm;
+    S.state.apart = $('#fApart').value === '1';
+    syncPovUi(currentPov());
     $('#saveStatus').textContent = '已保存';
     setBackground(bg);
     setSprite(face);
@@ -1344,7 +1389,7 @@ $('#btnSave').onclick = async () => {
     setBgm(bgm);
     startAudio();
     // 多次改背景时，以这次保存的最后一个值为准；服务端只记最后一次
-    await pushState({ background: bg, expression: face, dist, bgm });
+    await pushState({ background: bg, expression: face, dist, bgm, apart: S.state.apart });
     setTimeout(() => { $('#saveStatus').textContent = ''; }, 1800);
   } else {
     $('#saveStatus').textContent = '保存失败';
@@ -1422,12 +1467,32 @@ $('#btnMute').onclick = () => {
   });
 };
 
+function bgmAudible() {
+  return !!audio && !!audio.src && !audio.paused && !audio.muted && Number(audio.volume) > 0;
+}
+/* 页面在后台时也保持一个极轻的播放流：有原 BGM 就让 BGM 占住，没有就放 1 秒静音循环。 */
+function syncKeepAlive() {
+  if (!keepAlive) return;
+  if (bgmAudible()) {
+    if (!keepAlive.paused) {
+      try { keepAlive.pause(); } catch (e) { /* 忽略 */ }
+    }
+    return;
+  }
+  keepAlive.volume = 0;
+  if (keepAlive.paused) keepAlive.play().catch(() => { /* 等第一次点击 */ });
+}
 function startAudio() {
   S.bgmStarted = true;
   if (!audio.src && S.state && S.state.bgm) setBgm(S.state.bgm);
   if (!audio.muted) audio.play().catch(() => {});
+  syncKeepAlive();
 }
-document.addEventListener('pointerdown', () => { if (!S.bgmStarted) startAudio(); }, { once: true });
+setInterval(syncKeepAlive, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncKeepAlive(); });
+document.addEventListener('pointerdown', () => { if (!S.bgmStarted) startAudio(); else syncKeepAlive(); }, { once: true });
+audio.addEventListener('playing', syncKeepAlive);
+audio.addEventListener('pause', () => { if (!document.hidden) syncKeepAlive(); });
 
 /* ---------------- 提示 ---------------- */
 let toastTimer = null;

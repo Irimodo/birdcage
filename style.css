@@ -163,6 +163,8 @@ html, body {
   text-shadow: 1px 1px 0 var(--shadow), 0 1px 1px var(--shadow);
 }
 .say.inner { color: var(--text); }   /* 心声也统一成白色，只靠括号区分 */
+.say.env { text-align: center; padding-left: 0; color: rgba(226,211,190,.94); }
+.hrow.npc { color: rgba(226,211,190,.82); }
 .say.nar { color: rgba(255,237,237,.94); padding-left: 1.1em; }   /* 旁白/动作：不显示名字，稍收一点 */
 .say.long { font-size: 21px; line-height: 1.45; }   /* 长句自动缩一点，别被框底切掉 */
 .say.me { padding-left: 2.2em; color: #a99d8b; font-size: 22px; }  /* 我说的话：金色 */
@@ -317,8 +319,10 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 .tbtn.hide { display: none; }
 
 /* 角色视角：他不在画面里（用户就在他身体里） */
-body.pov-char .sprite,
 body.pov-char .near { opacity: 0 !important; pointer-events: none; }
+body.pov-user.apart .sprite,
+body.pov-user.apart .near { opacity: 0 !important; pointer-events: none; }
+body.timeline-e .sprite { height: 45% !important; background-size: auto 100% !important; background-position: center bottom !important; }
 .pov-flag {
   display: none;
   position: absolute; z-index: 12;
@@ -330,6 +334,7 @@ body.pov-char .near { opacity: 0 !important; pointer-events: none; }
   pointer-events: none;
 }
 .pov-flag.show { display: block; }
+.hrow.npc { color: rgba(190,178,158,.95); }
 
 /* ---------- 历史抽屉 ---------- */
 .drawer {

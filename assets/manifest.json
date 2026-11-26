@@ -393,6 +393,29 @@
         "source": "帳up11.png",
         "label": "恐吓·病娇（极少用）"
       }
+    },
+    "child": {
+      "bust": {
+        "normal": {
+          "file": "sprite/chou_child/normal.png.webp",
+          "label": "小时候·常服",
+          "source": "童年立绘（AI 重绘，参考庭前幼时 CG）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "smile": {
+          "file": "sprite/chou_child/normal.png.webp",
+          "label": "小时候·微笑",
+          "source": "童年立绘（AI 重绘，参考庭前幼时 CG）",
+          "size": [
+            751,
+            685
+          ]
+        }
+      },
+      "near": {}
     }
   },
   "bg": [
@@ -787,28 +810,6 @@
       "label": "公寓（夜）",
       "source": "アパート夜.png",
       "curated": true,
-      "size": [
-        816,
-        624
-      ]
-    },
-    {
-      "id": "bg_040",
-      "file": "bg/IMG_2547.JPG.webp",
-      "label": "照片素材",
-      "source": "IMG_2547.JPG",
-      "curated": false,
-      "size": [
-        640,
-        480
-      ]
-    },
-    {
-      "id": "bg_041",
-      "file": "bg/haikei.jpg.webp",
-      "label": "背景素材",
-      "source": "haikei.jpg",
-      "curated": false,
       "size": [
         816,
         624
