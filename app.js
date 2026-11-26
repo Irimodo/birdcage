@@ -1653,6 +1653,7 @@ $('#btnMute').onclick = () => {
   audio.muted = m;
   $('#btnMute').style.opacity = m ? '.4' : '1';
   if (!m) startAudio();
+  else syncKeepAlive(); // 关 BGM 的瞬间就接管保活，不等下一次定时器
   getJSON('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1660,20 +1661,17 @@ $('#btnMute').onclick = () => {
   });
 };
 
-function bgmAudible() {
-  return !!audio && !!audio.src && !audio.paused && !audio.muted && Number(audio.volume) > 0;
-}
-/* 页面在后台时也保持一个极轻的播放流：有原 BGM 就让 BGM 占住，没有就放 1 秒静音循环。 */
+/* 页面在后台时也保持一个极轻的播放流。
+   keepAlive 是独立循环，不跟 BGM 开关走：BGM 关掉或静音后它照常播，
+   这样浏览器不会把后台页面当成“无声页”冻结。 */
 function syncKeepAlive() {
   if (!keepAlive) return;
-  if (bgmAudible()) {
-    if (!keepAlive.paused) {
-      try { keepAlive.pause(); } catch (e) { /* 忽略 */ }
-    }
-    return;
+  keepAlive.muted = false;
+  keepAlive.volume = 1; // 文件本身是次声波，听不见，但音频管线有信号
+  if (keepAlive.paused) {
+    const p = keepAlive.play();
+    if (p && p.catch) p.catch(() => { /* 等第一次点击解锁 */ });
   }
-  keepAlive.volume = 0;
-  if (keepAlive.paused) keepAlive.play().catch(() => { /* 等第一次点击 */ });
 }
 function startAudio() {
   S.bgmStarted = true;
@@ -1682,10 +1680,11 @@ function startAudio() {
   syncKeepAlive();
 }
 setInterval(syncKeepAlive, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) syncKeepAlive(); });
-document.addEventListener('pointerdown', () => { if (!S.bgmStarted) startAudio(); else syncKeepAlive(); }, { once: true });
+document.addEventListener('visibilitychange', syncKeepAlive);
+document.addEventListener('pointerdown', () => { if (!S.bgmStarted) startAudio(); syncKeepAlive(); }, { passive: true });
 audio.addEventListener('playing', syncKeepAlive);
-audio.addEventListener('pause', () => { if (!document.hidden) syncKeepAlive(); });
+audio.addEventListener('pause', syncKeepAlive);
+keepAlive.addEventListener('pause', () => setTimeout(syncKeepAlive, 0));
 
 /* ---------------- 回复通知（PWA） ---------------- */
 const NOTIFY_KEY = 'birdcage_notify_reply';
