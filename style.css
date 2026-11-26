@@ -171,10 +171,11 @@ html, body {
 .say.me { padding-left: 2.2em; color: #a99d8b; font-size: 22px; }  /* 我说的话：金色 */
 .next-dot {
   position: absolute; right: 12px; bottom: 8px;
-  color: var(--gold); font-size: 13px;
+  color: var(--gold); font-size: 15px;
   opacity: 0; transition: opacity .2s;
 }
-.next-dot.on { opacity: 1; animation: blink 1.2s steps(2) infinite; }
+.next-dot::before { content: "▼"; }
+.next-dot.on { opacity: 1; animation: blink 1.4s ease-in-out infinite; }
 
 .log {
   flex: 1;
@@ -214,7 +215,7 @@ html, body {
 .hrow.me { color: #a99d8b; }
 .hrow.nar { color: rgba(255,237,237,.78); }   /* 旁白/动作：没有名字，颜色压一档 */
 body.touch .hrow { font-size: 26px; line-height: 1.7; }
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .42; } }
 
 /* 输入行（在框外，框里只留台词） */
 .composerbar {
@@ -649,6 +650,7 @@ body.touch .speaker { font-size: 32px; letter-spacing: 2px; margin: 0 0 4px; }
 body.touch .say { font-size: 30px; line-height: 1.5; }
 body.touch .say.long { font-size: 26px; line-height: 1.42; }
 body.touch .say.me { font-size: 28px; }
+body.touch .next-dot { right: 14px; bottom: 9px; font-size: 18px; }
 
 body.touch .composerbar { height: 58px; bottom: calc(14px + var(--safe-bottom-local, 0px)); gap: 9px; }
 body.touch .composerbar input[type=text] { font-size: 26px; padding: 12px 14px; }

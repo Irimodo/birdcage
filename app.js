@@ -678,6 +678,75 @@ function typeText(text, cls) {
   });
 }
 
+/* 对话框分页：按当前框的实际可用高度切，手机窄屏/电脑宽屏都自适应。
+   长台词不再硬塞进一个框里被底部切掉，而是切成几页，点一下/自动翻下一页。 */
+function ensureSayProbe() {
+  let probe = document.getElementById('__sayProbe');
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.id = '__sayProbe';
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:absolute;left:0;top:0;height:auto;max-height:none;overflow:visible;visibility:hidden;pointer-events:none;z-index:-1;';
+    stage.appendChild(probe);
+  }
+  return probe;
+}
+function splitTextToPages(text, cls) {
+  text = String(text || '');
+  const chars = Array.from(text);
+  if (!chars.length) return [''];
+  const say = sayEl();
+  const dlg = $('#dialog');
+  if (!dlg.clientWidth || !dlg.clientHeight) return [text];
+  const dlgCS = getComputedStyle(dlg);
+  const avail = Math.max(32, dlg.clientHeight - say.offsetTop - (parseFloat(dlgCS.paddingBottom) || 0) - 12);
+  const long = text.length > 55;
+  const probe = ensureSayProbe();
+  probe.className = 'say ' + (cls || '') + (long ? ' long' : '');
+  probe.style.width = say.offsetWidth + 'px';
+  probe.style.fontSize = say.style.fontSize || '';
+  probe.style.lineHeight = say.style.lineHeight || '';
+  const fits = (t) => { probe.textContent = t; return probe.scrollHeight <= avail; };
+  if (fits(text)) return [text];
+  const pages = [];
+  let rest = chars, guard = 0;
+  while (rest.length && guard++ < 40) {
+    if (fits(rest.join(''))) { pages.push(rest.join('').replace(/\s+$/, '')); break; }
+    let lo = 1, hi = rest.length - 1;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (fits(rest.slice(0, mid).join(''))) lo = mid; else hi = mid - 1;
+    }
+    let cut = Math.max(1, lo);
+    const min = Math.max(1, Math.floor(cut * 0.55));
+    // 先找句末标点（。！？」）……），整句翻页；找不到再退到逗号。
+    let strongCut = 0;
+    for (let i = cut; i >= min; i--) {
+      if (/[。！？!?…」』）)】]/.test(rest[i - 1])) { strongCut = i; break; }
+    }
+    if (strongCut >= Math.floor(cut * 0.55)) {
+      cut = strongCut;
+    } else {
+      for (let i = cut; i >= min; i--) {
+        if (/[、，,．.]/.test(rest[i - 1])) { cut = i; break; }
+      }
+    }
+    if (cut >= rest.length) cut = rest.length - 1;
+    const piece = rest.slice(0, cut).join('').replace(/\s+$/, '');
+    if (piece) pages.push(piece);
+    rest = rest.slice(cut);
+  }
+  return pages.length ? pages : [text];
+}
+function showNextHistoryPage() {
+  const q = S.histPageQueue;
+  if (!q || !q.pages.length) return false;
+  const next = q.pages.shift();
+  typeText(next, q.cls + (q.long ? ' long' : ''));
+  if (!q.pages.length) S.histPageQueue = null;
+  return true;
+}
+
 /* 停顿：到点自己继续；他说话时点一下也能提前翻下一句 */
 function pause(ms) {
   return new Promise((resolve) => {
@@ -722,6 +791,7 @@ async function playLines(lines, speaker, gap) {
 async function playReply(reply) {
   const items = reply.replace(/\r/g, '').split('\n').map((s) => s.trim()).filter(Boolean).map(parseLine);
   const manual = manualMode();
+  S.histPageQueue = null;
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     if (it.guest) {
@@ -735,10 +805,20 @@ async function playReply(reply) {
       if (S.state.guest) setGuest(S.state.guest, S.guestFace || 'calm');
       setSpeaker(it.kind === 'say' || it.kind === 'inner' ? NAME_HIM : '');
     }
-    await typeText(it.text, it.ambient ? 'env' : (it.kind === 'say' ? 'say' : (it.kind === 'nar' ? 'nar' : 'inner')));
-    if (i < items.length - 1) {
-      if (manual) await waitClick();
-      else await pause(900);
+    const cls = it.ambient ? 'env' : (it.kind === 'say' ? 'say' : (it.kind === 'nar' ? 'nar' : 'inner'));
+    const long = it.text.length > 55;
+    const pages = splitTextToPages(it.text, cls);
+    for (let p = 0; p < pages.length; p++) {
+      await typeText(pages[p], cls + (long ? ' long' : ''));
+      const morePage = p < pages.length - 1;
+      const moreLine = i < items.length - 1;
+      if (morePage) {
+        if (manual) await waitClick();
+        else await pause(Math.min(2600, Math.max(1200, pages[p].length * 10)));
+      } else if (moreLine) {
+        if (manual) await waitClick();
+        else await pause(900);
+      }
     }
   }
   if (!manual) nextDot().classList.remove('on');
@@ -837,7 +917,8 @@ $('#near').addEventListener('click', (e) => { if ($('#near').classList.contains(
 /* 点对话框 = 跳过打字 / 直接下一句 */
 $('#dialog').addEventListener('click', () => {
   if (S.typing) { S.skip = true; return; }
-  if (S.waitFn) S.waitFn();
+  if (S.waitFn) { S.waitFn(); return; }
+  if (S.histPageQueue && S.histPageQueue.pages.length) showNextHistoryPage();
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ' && S.waitFn) { e.preventDefault(); S.waitFn(); }
@@ -1056,6 +1137,8 @@ function showLastLine(hist) {
     setSpeaker('');
     sayEl().className = 'say';
     sayEl().textContent = '';
+    S.histPageQueue = null;
+    nextDot().classList.remove('on');
     return;
   }
   const lines = String(lastAssistant.content).split('\n').map((s) => s.trim()).filter(Boolean);
@@ -1067,8 +1150,14 @@ function showLastLine(hist) {
     setGuest(last.guest, last.face);
   }
   const el = sayEl();
-  el.className = 'say ' + (last.ambient ? 'env' : (last.kind === 'say' ? 'say' : (last.kind === 'nar' ? 'nar' : 'inner')));
-  el.textContent = last.text || '';
+  const cls = last.ambient ? 'env' : (last.kind === 'say' ? 'say' : (last.kind === 'nar' ? 'nar' : 'inner'));
+  const long = String(last.text || '').length > 55;
+  el.className = 'say ' + cls + (long ? ' long' : '');
+  const pages = splitTextToPages(last.text || '', cls);
+  el.textContent = pages[0] || '';
+  S.histPageQueue = pages.length > 1 ? { pages: pages.slice(1), cls, long } : null;
+  if (pages.length > 1) nextDot().classList.add('on');
+  else nextDot().classList.remove('on');
 }
 
 /* 切模式时把那条线自己的记录摆出来：线下的话不会出现在线上，反之亦然 */
