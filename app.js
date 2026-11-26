@@ -1661,7 +1661,7 @@ async function showReplyNotification(text, force) {
   try {
     const reg = await activeNotifyRegistration();
     if (reg && reg.showNotification) {
-      await reg.showNotification('帳 · 回复好了', {
+      await reg.showNotification('帳', {
         body,
         icon,
         badge: icon,
@@ -1670,7 +1670,7 @@ async function showReplyNotification(text, force) {
         data: { url: './' },
       });
     } else {
-      new Notification('帳 · 回复好了', { body, icon, tag: 'birdcage-reply' });
+      new Notification('帳', { body, icon, tag: 'birdcage-reply' });
     }
   } catch (e) { /* 通知失败不打断对话 */ }
 }
