@@ -49,7 +49,7 @@ const SCENE_PROMPT = `【视角地点判断 · 只做地点推理】你在一部
 1. 只有最近对话里明确发生了“告别、离开、回家、去学校、去店里、坐车、走到某处”等移动，才改变地点；没有明确移动，就沿用给出的当前地点。
 2. 如果两人仍在一起，USER 和 CHAR 必须选同一个背景，APART=0。
 3. 如果已经告别/分开，按各自去的方向选：実雪回家就选她现在的家；帳去学校就选学校；不要为了“画面好看”把两人放回同一个地方。
-4. 実雪现在的家：时间锚点 C（已住进雅楽代家）选雅楽代邸；其余锚点选她自己的公寓/房间（`bg_035`「九重的房间（公寓）」或 `bg_036/048` 公寓外观）。不要选“京的房间”（`bg_056/057/058`，那是京的房间）。
+4. 実雪现在的家：时间锚点 C（已住进雅楽代家）选雅楽代邸；其余锚点选她自己的公寓/房间（`bg_035`「九重的房间（公寓）」或 `bg_036/048` 公寓外观）。不要选“九重家旧宅”（已查封，不是可进入场景）。
 5. 帳去学校/上课：选学校（bg_084）；在教室里选 bg_132 或 bg_086。不要选咖啡厅。
 6. 不要选意象/特写背景（鸟笼、椿、信、礼物、葡萄酒、注射、漆黑、纯白、天空、夕阳、海等），只选能住人、能上学的实际地点。
 7. 输出必须是三行，不能多也不能少，不能解释：
@@ -401,7 +401,7 @@ function addTouch(kind) {
 function pendingTouches() { const cur = readRaw(TOUCH_KEY, []); return Array.isArray(cur) ? cur : []; }
 function clearTouches() { writeRaw(TOUCH_KEY, []); }
 function addSceneEvent(bgId, label) {
-  const noMove = ['bg_056', 'bg_057', 'bg_058'].includes(String(bgId)) || /京的房间|旧宅/.test(String(label || ''));
+  const noMove = /旧宅/.test(String(label || ''));
   writeRaw(SCENE_KEY, { t: nowText(), bg: bgId, label: label || bgId, preview: noMove });
 }
 function pendingScene() { const d = readRaw(SCENE_KEY, {}); return d && d.bg ? d : {}; }
@@ -523,7 +523,6 @@ function scenePlaceNote(bgId, label) {
     return '雅楽代家（帳的家/本家）。这里不是実雪打工的店，也不是她自己的公寓；父母可能在这里。';
   }
   if (lab.includes('旧宅')) return '九重家旧宅已经被查封，不是可进入的场景；不能写前往、进入、推门或屋内回忆。';
-  if (bid === 'bg_056' || bid === 'bg_057' || bid === 'bg_058' || lab.includes('京的房间') || lab.includes('京子')) return '京（京子）的房间，不是実雪的房间，也不是雅楽代家，也不是待宵亭，也不是可进入场景。';
   if (bid === 'bg_035' || lab.includes('九重') || lab.includes('主人公部屋')) return '九重実雪现在住的房间（咖啡屋老板提供的公寓内），不是破产前的九重家旧宅，也不是雅楽代家；旧宅已经被查封，不能住。';
   if (lab.includes('公寓')) return '実雪住的公寓（咖啡屋老板提供的住处/外观），不是雅楽代家，也不是她打工的店；如果画面是外观，不要写成房间内部。';
   if (lab.includes('平井')) return '平井鏡太郎的家/住处，不是帳家，也不是実雪家。';
@@ -572,7 +571,7 @@ function buildSystemBlocks(cfg, channel, pov) {
           '实雪把画面换成了「' + (sc.label || sc.bg) + '」（' + sc.bg + '）。' +
           '这个画面的性质：' + scenePlaceNote(sc.bg, sc.label || '') + '\n' +
           '**这只是画面预览，不是你们实际到达了这里。** 不要写“走了一会儿／我们来到了／推开房门／走进去了”，也不要改变当前实际地点。' +
-          '如果她问起这个画面，就按你们现在真正所在的地方回答；不要为了配合画面把她搬进京的房间或九重家旧宅。');
+          '如果她问起这个画面，就按你们现在真正所在的地方回答；不要为了配合画面把她搬进九重家旧宅。');
       } else {
         blocks.push('【她刚把场景换了（刚发生，还没回应过）】\n' +
           '实雪把画面从刚才的地方换成了「' + (sc.label || sc.bg) + '」（' + sc.bg + '）。' +

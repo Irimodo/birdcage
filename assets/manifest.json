@@ -1065,39 +1065,6 @@
       ]
     },
     {
-      "id": "bg_056",
-      "file": "bg/ケイの部屋.jpg.webp",
-      "label": "京的房间",
-      "source": "ケイの部屋.jpg",
-      "curated": false,
-      "size": [
-        816,
-        624
-      ]
-    },
-    {
-      "id": "bg_057",
-      "file": "bg/ケイの部屋_窓際.png.webp",
-      "label": "京的房间·窗边",
-      "source": "ケイの部屋_窓際.png",
-      "curated": false,
-      "size": [
-        816,
-        624
-      ]
-    },
-    {
-      "id": "bg_058",
-      "file": "bg/ケイの部屋縁側.png.webp",
-      "label": "京的房间·缘侧",
-      "source": "ケイの部屋縁側.png",
-      "curated": false,
-      "size": [
-        816,
-        624
-      ]
-    },
-    {
       "id": "bg_059",
       "file": "bg/タクシー.png.webp",
       "label": "タクシー",
