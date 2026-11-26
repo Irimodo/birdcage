@@ -117,6 +117,8 @@ async function boot() {
   S.cfg = cfgRes.config;
   S.manifest = manRes.manifest;
   S.state = stRes.state;
+  registerNotifyWorker();
+  updateNotifyUI();
   // 重开时回到当前视角自己的地点，而不是另一边的背景
   const bootBg = (S.state.pov === 'char' ? S.state.bg_char : S.state.bg_user);
   if (bootBg && bgItem(bootBg)) S.state.background = bootBg;
@@ -781,6 +783,7 @@ async function pat(zone) {
     }
     if (res.state) await applyState(res.state, false);
     pushHist('offline', 'assistant', res.reply || '', { pov: currentPov() });
+    showReplyNotification(res.reply || '');
     await playReply(res.reply || '');
   } catch (e) {
     toast('请求失败：' + e.message);
@@ -907,6 +910,7 @@ async function sendChat(payload) {
     pushHist(channel, 'user', payload.text || '（发来一个文件）', { pov: payload.pov || currentPov() });
     if (res.state && channel === 'offline') await applyState(res.state, false);
     pushHist(channel, 'assistant', res.reply || '', { pov: payload.pov || currentPov() });
+    showReplyNotification(res.reply || '');
     if (channel === 'online') await playOnlineReply(res.reply || '');
     else await playReply(res.reply || '');
   } catch (e) {
@@ -1415,6 +1419,11 @@ $('#fTimeline').addEventListener('change', () => {
   fillFaceSelect('', $('#fTimeline').value);
 });
 
+const notifyBtn = $('#btnNotify');
+if (notifyBtn) notifyBtn.onclick = toggleReplyNotify;
+const notifyTestBtn = $('#btnNotifyTest');
+if (notifyTestBtn) notifyTestBtn.onclick = testReplyNotify;
+
 $('#btnSave').onclick = async () => {
   const api = {
     base_url: $('#fBase').value.trim(),
@@ -1574,6 +1583,138 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sync
 document.addEventListener('pointerdown', () => { if (!S.bgmStarted) startAudio(); else syncKeepAlive(); }, { once: true });
 audio.addEventListener('playing', syncKeepAlive);
 audio.addEventListener('pause', () => { if (!document.hidden) syncKeepAlive(); });
+
+/* ---------------- 回复通知（PWA） ---------------- */
+const NOTIFY_KEY = 'birdcage_notify_reply';
+
+function notifyFlag() {
+  try { return localStorage.getItem(NOTIFY_KEY) === '1'; } catch (e) { return false; }
+}
+function setNotifyFlag(on) {
+  try { localStorage.setItem(NOTIFY_KEY, on ? '1' : '0'); } catch (e) { /* 忽略 */ }
+}
+function notifySupported() {
+  return typeof window !== 'undefined' && ('Notification' in window) && ('serviceWorker' in navigator) && /^https?:/.test(location.protocol);
+}
+function registerNotifyWorker() {
+  if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+  return navigator.serviceWorker.register('sw.js').catch(() => null);
+}
+function requestNotifyPermission() {
+  if (!notifySupported()) return Promise.resolve('unsupported');
+  if (Notification.permission === 'granted') return Promise.resolve('granted');
+  if (Notification.permission === 'denied') return Promise.resolve('denied');
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    try {
+      const p = Notification.requestPermission(finish);
+      if (p && typeof p.then === 'function') p.then(finish).catch(() => finish('denied'));
+    } catch (e) { finish('denied'); }
+    setTimeout(() => finish('denied'), 10000);
+  });
+}
+function updateNotifyUI() {
+  const btn = $('#btnNotify'), out = $('#notifyOut'), test = $('#btnNotifyTest');
+  if (!btn) return;
+  if (!notifySupported()) {
+    btn.disabled = true;
+    btn.textContent = '通知不可用';
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (out) out.textContent = ios ? 'iPhone 请先“添加到主屏幕”，再从桌面打开；Safari 标签页里不能开通知。' : '这个浏览器不支持网页通知。';
+    if (test) test.hidden = true;
+    return;
+  }
+  btn.disabled = false;
+  const enabled = notifyFlag() && Notification.permission === 'granted';
+  btn.textContent = enabled ? '已开启（点一下关闭）' : '开启回复通知';
+  if (out) {
+    out.textContent = Notification.permission === 'denied'
+      ? '系统已经拒绝通知权限；去浏览器/系统设置里允许后再点。'
+      : (enabled ? '切到后台时，回复写好会提醒你。' : '只在回复生成好时提醒；前台不会打扰。');
+  }
+  if (test) test.hidden = !enabled;
+}
+async function activeNotifyRegistration() {
+  if (!('serviceWorker' in navigator)) return null;
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (existing && existing.active) return existing;
+  await registerNotifyWorker();
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ]);
+}
+function notificationPreview(text) {
+  const lines = String(text || '').replace(/@@[^\n]*/g, '').split('\n')
+    .map((line) => line.trim().replace(/[「」]/g, ''))
+    .filter(Boolean);
+  const first = lines.find((line) => !/^（.*）$/.test(line)) || lines[0] || '';
+  return first.replace(/[*_`#]/g, '').slice(0, 90);
+}
+async function showReplyNotification(text, force) {
+  if (!notifyFlag() || !notifySupported() || Notification.permission !== 'granted') return;
+  if (!force && !document.hidden && document.hasFocus()) return;
+  const preview = notificationPreview(text);
+  const body = preview ? preview + (preview.length >= 90 ? '…' : '') : '他写好了，回来看。';
+  const icon = new URL('icon-192.png?v=22', location.href).href;
+  try {
+    const reg = await activeNotifyRegistration();
+    if (reg && reg.showNotification) {
+      await reg.showNotification('帳 · 回复好了', {
+        body,
+        icon,
+        badge: icon,
+        tag: 'birdcage-reply',
+        renotify: true,
+        data: { url: './' },
+      });
+    } else {
+      new Notification('帳 · 回复好了', { body, icon, tag: 'birdcage-reply' });
+    }
+  } catch (e) { /* 通知失败不打断对话 */ }
+}
+async function testReplyNotify() {
+  if (!notifySupported()) { updateNotifyUI(); toast('这个浏览器不支持网页通知'); return; }
+  const state = await requestNotifyPermission();
+  if (state === 'granted') {
+    setNotifyFlag(true);
+    await registerNotifyWorker();
+    updateNotifyUI();
+    showReplyNotification('（这是测试通知。切到后台，回复生成好时我会再叫你。）', true);
+  } else if (state === 'denied') {
+    updateNotifyUI();
+    toast('通知权限被拒绝；去系统设置里允许后再试');
+  } else {
+    updateNotifyUI();
+    toast('这个浏览器不支持网页通知');
+  }
+}
+
+async function toggleReplyNotify() {
+  if (!notifySupported()) { updateNotifyUI(); toast('这个浏览器不支持网页通知'); return; }
+  if (notifyFlag() && Notification.permission === 'granted') {
+    setNotifyFlag(false);
+    updateNotifyUI();
+    toast('回复通知已关闭');
+    return;
+  }
+  const state = await requestNotifyPermission();
+  if (state === 'granted') {
+    setNotifyFlag(true);
+    await registerNotifyWorker();
+    updateNotifyUI();
+    toast('回复通知已开启');
+    showReplyNotification('（通知已开启。切到后台，回复生成好会提醒你。）', true);
+  } else if (state === 'denied') {
+    setNotifyFlag(false);
+    updateNotifyUI();
+    toast('通知权限被拒绝；去系统设置里允许后再开');
+  } else {
+    updateNotifyUI();
+    toast('这个浏览器不支持网页通知');
+  }
+}
 
 /* ---------------- 提示 ---------------- */
 let toastTimer = null;

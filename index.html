@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=22">
 <link rel="icon" href="icon-192.png?v=22">
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 <div class="ambient" id="ambient"></div>
@@ -205,6 +205,16 @@
       </div>
 
       <div class="group">
+        <h4>通知</h4>
+        <div class="field">
+          <button class="btn" id="btnNotify">开启回复通知</button>
+          <button class="mini-btn" id="btnNotifyTest" hidden>测试通知</button>
+          <div class="hint" id="notifyOut">切到后台时，回复写好会提醒你；前台不会打扰。</div>
+          <div class="hint">iPhone 要先“添加到主屏幕”，再从桌面打开。完全杀掉 App 后不会响；切后台、页面还在时才会提醒。</div>
+        </div>
+      </div>
+
+      <div class="group">
         <h4>文字</h4>
         <div class="field">
           <label>台词播放</label>
@@ -274,8 +284,8 @@
          accept="image/*,video/*,.pdf,.docx,.doc,.xlsx,.xls,.txt,.md,.csv">
 </div>
 
-<script src="pure-data.js?v=25"></script>
-<script src="engine.js?v=25"></script>
-<script src="app.js?v=25"></script>
+<script src="pure-data.js?v=26"></script>
+<script src="engine.js?v=26"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
