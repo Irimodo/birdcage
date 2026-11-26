@@ -718,18 +718,10 @@ function splitTextToPages(text, cls) {
       if (fits(rest.slice(0, mid).join(''))) lo = mid; else hi = mid - 1;
     }
     let cut = Math.max(1, lo);
-    const min = Math.max(1, Math.floor(cut * 0.55));
-    // 先找句末标点（。！？」）……），整句翻页；找不到再退到逗号。
-    let strongCut = 0;
-    for (let i = cut; i >= min; i--) {
-      if (/[。！？!?…」』）)】]/.test(rest[i - 1])) { strongCut = i; break; }
-    }
-    if (strongCut >= Math.floor(cut * 0.55)) {
-      cut = strongCut;
-    } else {
-      for (let i = cut; i >= min; i--) {
-        if (/[、，,．.]/.test(rest[i - 1])) { cut = i; break; }
-      }
+    // 只回头看最近的一小段，找一个标点收尾；不在离得太远的地方硬切，避免整页空掉一半。
+    const back = Math.max(8, Math.floor(cut * 0.22));
+    for (let i = cut; i >= Math.max(1, cut - back); i--) {
+      if (/[。！？!?…、，,．.」』）)】]/.test(rest[i - 1])) { cut = i; break; }
     }
     if (cut >= rest.length) cut = rest.length - 1;
     const piece = rest.slice(0, cut).join('').replace(/\s+$/, '');
