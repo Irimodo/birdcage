@@ -6,14 +6,14 @@
     "source_exe": "deitsuanogame_zh.exe",
     "built_at": "2026-11-25 16:22:59",
     "note": "原包为全年龄恋爱向作品，未发现 18+ 素材；「裏」相关图未纳入。 表情标注按实看图重命名（键名不变）。",
-    "rev": 22,
+    "rev": 24,
     "visual": "近景（816×624 全屏特写）／半身（全身裁到胯）两档，由角色自己判断何时凑近"
   },
   "sprite": {
     "full": {
       "normal": {
         "file": "sprite/chou/normal.png.webp",
-        "label": "为难·强颜欢笑",
+        "label": "平静温柔微笑",
         "source": "帳_1.png",
         "size": [
           1085,
@@ -31,7 +31,7 @@
       },
       "down": {
         "file": "sprite/chou/down.png.webp",
-        "label": "受伤（身体）",
+        "label": "失落",
         "source": "帳_3.png",
         "size": [
           1085,
@@ -49,7 +49,7 @@
       },
       "surprised": {
         "file": "sprite/chou/surprised.png.webp",
-        "label": "惊讶·受伤（身体）",
+        "label": "惊讶愣住",
         "source": "帳_5.png",
         "size": [
           1085,
@@ -58,7 +58,7 @@
       },
       "angry": {
         "file": "sprite/chou/angry.png.webp",
-        "label": "受伤（身体）·难受",
+        "label": "惊讶大声说话",
         "source": "帳_6.png",
         "size": [
           1085,
@@ -67,7 +67,7 @@
       },
       "grin": {
         "file": "sprite/chou/grin.png.webp",
-        "label": "咬嘴唇·为难",
+        "label": "温柔微笑",
         "source": "帳_7.png",
         "size": [
           1085,
@@ -76,7 +76,7 @@
       },
       "grin_blush": {
         "file": "sprite/chou/grin_blush.png.webp",
-        "label": "不开心",
+        "label": "微笑脸红温柔",
         "source": "帳_7照.png",
         "size": [
           1085,
@@ -85,7 +85,7 @@
       },
       "laugh": {
         "file": "sprite/chou/laugh.png.webp",
-        "label": "惊讶·不高兴",
+        "label": "开心眯眼大笑",
         "source": "帳_8.png",
         "size": [
           1085,
@@ -103,7 +103,7 @@
       },
       "hurt": {
         "file": "sprite/chou/hurt.png.webp",
-        "label": "微笑·开心",
+        "label": "身体难受",
         "source": "帳_9.png",
         "size": [
           1085,
@@ -141,7 +141,7 @@
     "bust": {
       "normal": {
         "file": "sprite/chou_bust/normal.png.webp",
-        "label": "为难·强颜欢笑",
+        "label": "平静温柔微笑",
         "source": "帳_1.png（上半身裁切）",
         "size": [
           751,
@@ -159,7 +159,7 @@
       },
       "down": {
         "file": "sprite/chou_bust/down.png.webp",
-        "label": "受伤（身体）",
+        "label": "失落",
         "source": "帳_3.png（上半身裁切）",
         "size": [
           751,
@@ -177,7 +177,7 @@
       },
       "surprised": {
         "file": "sprite/chou_bust/surprised.png.webp",
-        "label": "惊讶·受伤（身体）",
+        "label": "惊讶愣住",
         "source": "帳_5.png（上半身裁切）",
         "size": [
           751,
@@ -186,7 +186,7 @@
       },
       "angry": {
         "file": "sprite/chou_bust/angry.png.webp",
-        "label": "受伤（身体）·难受",
+        "label": "惊讶大声说话",
         "source": "帳_6.png（上半身裁切）",
         "size": [
           751,
@@ -195,7 +195,7 @@
       },
       "grin": {
         "file": "sprite/chou_bust/grin.png.webp",
-        "label": "咬嘴唇·为难",
+        "label": "温柔微笑",
         "source": "帳_7.png（上半身裁切）",
         "size": [
           751,
@@ -204,7 +204,7 @@
       },
       "grin_blush": {
         "file": "sprite/chou_bust/grin_blush.png.webp",
-        "label": "不开心",
+        "label": "微笑脸红温柔",
         "source": "帳_7照.png（上半身裁切）",
         "size": [
           751,
@@ -213,7 +213,7 @@
       },
       "laugh": {
         "file": "sprite/chou_bust/laugh.png.webp",
-        "label": "惊讶·不高兴",
+        "label": "开心眯眼大笑",
         "source": "帳_8.png（上半身裁切）",
         "size": [
           751,
@@ -231,7 +231,7 @@
       },
       "hurt": {
         "file": "sprite/chou_bust/hurt.png.webp",
-        "label": "微笑·开心",
+        "label": "身体难受",
         "source": "帳_9.png（上半身裁切）",
         "size": [
           751,
@@ -274,7 +274,7 @@
           624
         ],
         "source": "20.png",
-        "label": "为难·强颜欢笑"
+        "label": "平静温柔微笑"
       },
       "sulk": {
         "file": "sprite/chou_near/sulk.png.webp",
@@ -292,7 +292,7 @@
           624
         ],
         "source": "17.png",
-        "label": "受伤（身体）"
+        "label": "失落"
       },
       "closed_smile": {
         "file": "sprite/chou_near/closed_smile.png.webp",
@@ -310,7 +310,7 @@
           624
         ],
         "source": "22.png",
-        "label": "惊讶·受伤（身体）"
+        "label": "惊讶愣住"
       },
       "angry": {
         "file": "sprite/chou_near/angry.png.webp",
@@ -319,7 +319,7 @@
           624
         ],
         "source": "12.png",
-        "label": "受伤（身体）·难受"
+        "label": "惊讶大声说话"
       },
       "grin": {
         "file": "sprite/chou_near/grin.png.webp",
@@ -328,7 +328,7 @@
           624
         ],
         "source": "21.png",
-        "label": "咬嘴唇·为难"
+        "label": "温柔微笑"
       },
       "grin_blush": {
         "file": "sprite/chou_near/grin_blush.png.webp",
@@ -337,7 +337,7 @@
           624
         ],
         "source": "帳up6.png",
-        "label": "不开心"
+        "label": "微笑脸红温柔"
       },
       "laugh": {
         "file": "sprite/chou_near/laugh.png.webp",
@@ -346,7 +346,7 @@
           624
         ],
         "source": "帳up6.png",
-        "label": "惊讶·不高兴"
+        "label": "开心眯眼大笑"
       },
       "laugh_blush": {
         "file": "sprite/chou_near/laugh_blush.png.webp",
@@ -364,7 +364,7 @@
           624
         ],
         "source": "帳up7.png",
-        "label": "微笑·开心"
+        "label": "身体难受"
       },
       "awkward": {
         "file": "sprite/chou_near/awkward.png.webp",

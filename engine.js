@@ -442,7 +442,8 @@ function ambientRules(bgLabel) {
   const publicScene = /(咖啡|喫茶|店|街|车站|公園|公园|市场|餐廳|餐厅|食堂|教会|教室|学园|学園|等待室|大厅)/.test(bgLabel || '');
   if (!publicScene) return '【路人／环境声｜可选】当前不是公共场所，不要为了热闹硬加路人；把注意力留在两人的对话上。';
   return '【路人／环境声｜可选，不是每轮都要】当前在公共场所，可以偶尔插入 1 句路人的自然台词，让场景有生活感。\n' +
-    '格式必须单独一行，直接写「客人1：请给我一杯咖啡」这种内容，但整行不要再套一层「」引号；名字只写客人1／客人2／路人／店员／常客，不要给路人写心理，不要给路人立绘。\n' +
+    '格式必须单独一行，行首写说话人：`田中：请给我一杯咖啡` 或 `田中：「请给我一杯咖啡」`；整行不要再套一层多余的引号，不要给路人写心理，不要给路人立绘。\n' +
+    '**说话人的名字要按剧情来**：前文已经出现过名字，就直接用那个名字（田中、佐藤さん、美咲）；没有名字，就写具体身份（店员、同学、店主、老师、邻桌客人、路人A）。不要一律固定写「路人」，只有真的不知道身份、也无法从上下文推断时才用「路人」。\n' +
     '路人只做环境声，不推进主线、不打断两人的关键对话；如果这一轮正在表白、争吵、受伤、亲密或剧情紧张，就完全不要加。';
 }
 function povRules(pov) {
@@ -892,6 +893,9 @@ async function chat(body) {
       applied.bg_user = applied.background;
       applied.bg_char = applied.background;
     }
+  } else if (applied.apart === false) {
+    // 模型判断“重新同处”时，两边地点一起回到当前画面，避免切视角跳回旧地点。
+    applied.bg_user = applied.bg_char = loadState().background;
   }
   if (Object.keys(applied).length) saveState(applied);
   // 记忆只由每 30 轮的自动总结写入；忽略模型偶尔漏出的 @@MEMO，避免又变成一句话一条。

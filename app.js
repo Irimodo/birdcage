@@ -405,6 +405,7 @@ async function applyState(patch, instant) {
     audio.play().catch(() => {});
   }
   S.state = Object.assign({}, S.state, patch);
+  if (patch.apart === false) { S.state.bg_user = S.state.background; S.state.bg_char = S.state.background; }
   if (patch.guest !== undefined) setGuest(S.state.guest, S.guestFace || 'calm', instant);
   syncPovUi(S.state.pov || 'user');
   document.body.classList.toggle('apart', !!S.state.apart);
@@ -457,25 +458,6 @@ async function setPov(pov) {
   refreshPovScene(next);
 }
 
-function setApart(apart) {
-  const next = !!apart;
-  S.state.apart = next;
-  const patch = { apart: next };
-  // 重新同处时，两边都回到当前画面的地点，避免切视角又跳回旧地点。
-  if (!next) {
-    S.state.bg_user = S.state.background;
-    S.state.bg_char = S.state.background;
-    patch.bg_user = S.state.background;
-    patch.bg_char = S.state.background;
-    setSprite(S.state.expression || 'normal', true);
-    setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
-  } else {
-    const near = $('#near');
-    if (near) near.classList.remove('show');
-  }
-  syncPovUi(currentPov());
-  pushState(patch);
-}
 
 /* ---------------- 文本：名牌 + 一句台词 ---------------- */
 const sayEl = () => $('#say');
@@ -490,6 +472,24 @@ const GUEST_NAMES = {
   mother: '雅樂代 香穗留',
 };
 
+/* 路人/环境声的说话人：有名字就用名字，没有名字就用具体身份 */
+function isAmbientName(name) {
+  const n = String(name || '').trim();
+  if (!n || n.length > 16) return false;
+  if (/^(帳|实雪|実雪|雅楽代|九重|平井|鏡太郎|镜太郎|暁|香[穗穂]留|かほる|我|你|他|她|旁白|旁白者|叙述|时间|地点|备注|控制|场景|画面)$/.test(n)) return false;
+  if (/^(客人|路人|店員|店员|店長|店长|店主|老板|同學|同学|同級生|同级生|学生|學生|老师|教師|教师|前辈|前輩|后辈|後輩|阿姨|大叔|婆婆|爷爷|爺爺|奶奶|小姐|女士|先生|常客|服务员|服務員|收银员|收銀員|邻桌|鄰桌)/.test(n)) return true;
+  if (/^[\u4e00-\u9fffぁ-んァ-ヶー]{2,6}$/.test(n)) return true;
+  if (/^[A-Za-z][A-Za-z\-]{1,11}$/.test(n)) return true;
+  return false;
+}
+function ambientSpeaker(scan) {
+  const known = scan.match(/^(客人\s*[0-9０-９一二三四五六七八九十A-Za-z]+|路人(?:\s*[甲乙丙丁A-Za-z0-9０-９]*)?|店員|店员|常客)\s*[：:]\s*/);
+  if (known) return { name: known[1].replace(/\s+/g, ''), length: known[0].length };
+  const m = scan.match(/^([^\s：:，。！？、；「」『』（）()]{1,16})\s*[：:]\s*/);
+  if (!m || !isAmbientName(m[1])) return null;
+  return { name: m[1], length: m[0].length };
+}
+
 /* 一行是谁说的：`鏡太郎[cold]：「…」` 归配角；「…」归帳；括号里是心声；其余是旁白/动作（不显示名字） */
 function parseLine(line) {
   const raw = String(line);
@@ -502,10 +502,10 @@ function parseLine(line) {
   }
   const wrapped = raw.trim().match(/^[「『]([\s\S]*)[」』]$/);
   const scan = wrapped ? wrapped[1] : raw;
-  const amb = scan.match(/^(客人\s*[0-9０-９一二三四五六七八九十A-Za-z]+|路人(?:\s*[甲乙丙丁A-Za-z0-9０-９]*)?|店員|店员|常客)\s*[：:]\s*/);
+  const amb = ambientSpeaker(scan);
   if (amb) {
-    const txt = scan.slice(amb[0].length).trim().replace(/^[「『]/, '').replace(/[」』]$/, '');
-    return { who: amb[1].replace(/\s+/g, ''), guest: '', face: null, text: txt, kind: 'say', ambient: true };
+    const txt = scan.slice(amb.length).trim().replace(/^[「『]/, '').replace(/[」』]$/, '');
+    return { who: amb.name, guest: '', face: null, text: txt, kind: 'say', ambient: true };
   }
   const t = raw.trim();
   if (/^[「『]/.test(t)) return { who: NAME_HIM, guest: '', face: null, text: t, kind: 'say' };
@@ -1319,7 +1319,6 @@ function fillPanel() {
   $('#fMaxTok').value = c.api.max_tokens || 1200;
   $('#fTimeline').value = c.timeline || 'A';
   $('#fTimelineCustom').value = c.timeline_custom || '';
-  $('#fApart').value = (S.state && S.state.apart) ? '1' : '0';
   $('#fVol').value = Math.round((c.ui.bgm_volume ?? 0.6) * 100);
   $('#volHint').textContent = $('#fVol').value + '%';
   $('#fSpeed').value = c.ui.typing_speed ?? 30;
@@ -1365,7 +1364,6 @@ $('#fDist').onchange = () => {
   setNear(d, S.state.expression || $('#fFace').value || 'normal');
 };
 $('#fBgm').onchange = () => { setBgm($('#fBgm').value); startAudio(); };
-$('#fApart').onchange = () => setApart($('#fApart').value === '1');
 
 $('#btnModels').onclick = async () => {
   const out = $('#modelsOut');
@@ -1448,7 +1446,6 @@ $('#btnSave').onclick = async () => {
     S.state.expression = face;
     S.state.dist = dist;
     S.state.bgm = bgm;
-    S.state.apart = $('#fApart').value === '1';
     syncPovUi(currentPov());
     $('#saveStatus').textContent = '已保存';
     setBackground(bg);
