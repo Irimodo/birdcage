@@ -530,6 +530,8 @@ function setSpeaker(name) { speakerEl().textContent = name; }
 /* 历史里可能留着旧版泄漏的工具包装：显示前再洗一遍，别让 default_api 出现在抽屉里 */
 function cleanAssistantText(text) {
   let s = String(text || '').replace(/\r/g, '');
+  // 清掉模型漏出的韩文音节（例如「정呼」开头的정）；这个角色只说日文/中文
+  s = s.replace(/[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF]/g, '');
   s = s.replace(/@+\s*@*\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
   s = s.replace(/(^|\n)\s*(?:default_api|tool_call|function_call)\s*:[^\n{]*\{\s*content\s*:\s*/gi, '$1');
   s = s.replace(/default_api\s*:[^\n{]*\{\s*content\s*:\s*/gi, '');

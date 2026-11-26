@@ -749,6 +749,8 @@ function cleanLines(body) {
 }
 function sanitizeModelOutput(raw) {
   let s = String(raw || '').replace(/\r/g, '');
+  // 这个角色只说日文/中文；模型偶尔会漏出韩文音节（例如正文开头的「정」），直接清掉
+  s = s.replace(/[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF]/g, '');
   // 有些模型会把控制行拆成 @@ST / ATE，或者少一个 @，先统一拼回来
   s = s.replace(/@+\s*@*\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
   // 去掉 default_api / agw_emit 这类工具调用包装，只留下 content 里的正文
