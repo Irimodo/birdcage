@@ -383,7 +383,10 @@ function recentHistory(turns, channel, stage = 'A') {
     }
     lines.push({ role: obj.role, content: text });
   });
-  return lines.slice(-turns * 2);
+  // 设置里写的是「聊天上下文条数」，按消息条数算；旧版误乘 2，
+  // 填 100 实际会塞 200 条，容易让模型把更早的 user 也当成待回答的问题。
+  const n = Math.max(2, Number(turns) || 12);
+  return lines.slice(-n);
 }
 function clearHistory() { writeRaw(HIST_KEY, { offline: [], online: [] }); }
 
