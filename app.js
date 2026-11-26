@@ -460,15 +460,21 @@ async function setPov(pov) {
 function setApart(apart) {
   const next = !!apart;
   S.state.apart = next;
-  syncPovUi(currentPov());
+  const patch = { apart: next };
+  // 重新同处时，两边都回到当前画面的地点，避免切视角又跳回旧地点。
   if (!next) {
+    S.state.bg_user = S.state.background;
+    S.state.bg_char = S.state.background;
+    patch.bg_user = S.state.background;
+    patch.bg_char = S.state.background;
     setSprite(S.state.expression || 'normal', true);
     setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
   } else {
     const near = $('#near');
     if (near) near.classList.remove('show');
   }
-  pushState({ apart: next });
+  syncPovUi(currentPov());
+  pushState(patch);
 }
 
 /* ---------------- 文本：名牌 + 一句台词 ---------------- */
