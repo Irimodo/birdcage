@@ -103,7 +103,8 @@ html, body {
   max-width: none;
   filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .55));
 }
-.sprite { cursor: pointer; }
+.sprite { cursor: pointer; touch-action: manipulation; }
+.near { touch-action: manipulation; }
 .sprite.pat { animation: pat .45s ease; }
 @keyframes pat {
   0% { transform: scale(1); }
@@ -322,7 +323,7 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 body.pov-char .near { opacity: 0 !important; pointer-events: none; }
 body.pov-user.apart .sprite,
 body.pov-user.apart .near { opacity: 0 !important; pointer-events: none; }
-body.timeline-e .sprite { height: 89% !important; background-size: auto 100% !important; background-position: center bottom !important; }
+body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !important; background-position: center bottom !important; }
 .pov-flag {
   display: none;
   position: absolute; z-index: 12;
@@ -709,6 +710,7 @@ body.portrait .pic {
   box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
 }
 body.portrait .sprite { height: 89%; }
+body.portrait.timeline-e .sprite { height: 75% !important; }
 body.portrait .guest-sprite {
   height: 78%;
   width: 380px;                                  /* 用舞台单位，不跟 4:3 窗口的宽度走 */

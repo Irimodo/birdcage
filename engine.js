@@ -28,7 +28,8 @@ const DEFAULT_CONFIG = {
 };
 
 const STATE_DEFAULT = {
-  background: 'bg_010', expression: 'normal', dist: 'far', outfit: 'uniform',
+  background: 'bg_010', bg_user: 'bg_010', bg_char: 'bg_010',
+  expression: 'normal', dist: 'far', outfit: 'uniform',
   cg: '', bgm: 'bgm_01', muted: false, guest: '', pov: 'user', apart: false,
 };
 
@@ -39,6 +40,33 @@ const TIMELINE_BLOCKS = {
   D: '【时间锚点 D · 婚约取消那天】九重家已破产，父母离世，实雪刚从纯喫茶说出「请和我做朋友吧」。帐回家后砸了墙，还没有向她之外的任何人摊牌。',
   E: '【时间锚点 E · 小时候】两人还是孩子，约九到十岁。實雪和帳在雅楽代家的庭前、走廊或花园里度过一段童年时光；帳还没有长成后来的少爷，实雪也还是个孩子。这个锚点只能写童年日常、玩耍、约定和孩童能理解的情绪，不要写婚约、成人恋爱、身体接触或任何性暗示。',
 };
+
+
+const SCENE_PROMPT = `【视角地点判断 · 只做地点推理】你在一部双视角视觉小说里做“场记”。角色是雅楽代 帳（男，角色），用户是九重 実雪（女，我）。
+你的任务：根据最近对话，判断两个人**此刻各自实际所在的地点**，并判断他们是否分开。只判断地点，不写剧情、不写台词、不分析感情。
+
+硬规则：
+1. 只有最近对话里明确发生了“告别、离开、回家、去学校、去店里、坐车、走到某处”等移动，才改变地点；没有明确移动，就沿用给出的当前地点。
+2. 如果两人仍在一起，USER 和 CHAR 必须选同一个背景，APART=0。
+3. 如果已经告别/分开，按各自去的方向选：実雪回家就选她现在的家；帳去学校就选学校；不要为了“画面好看”把两人放回同一个地方。
+4. 実雪现在的家：时间锚点 C（已住进雅楽代家）选雅楽代邸；其余锚点选她自己的公寓。不要选“九重的房间”（那是破产前的旧宅）。
+5. 帳去学校/上课：选学校（bg_084）；在教室里选 bg_132 或 bg_086。不要选咖啡厅。
+6. 不要选意象/特写背景（鸟笼、椿、信、礼物、葡萄酒、注射、漆黑、纯白、天空、夕阳、海等），只选能住人、能上学的实际地点。
+7. 输出必须是三行，不能多也不能少，不能解释：
+USER=bg_xxx|地点名
+CHAR=bg_xxx|地点名
+APART=0或1
+
+可用背景（只能从这里选）：
+%BG_LIST%
+
+当前记录：
+実雪=%USER_BG%|%USER_LABEL%
+帳=%CHAR_BG%|%CHAR_LABEL%
+APART=%APART%
+
+最近对话：
+%TRANSCRIPT%`;
 
 const SUMMARY_PROMPT = `【记忆整理 · 帳的日记】你是长期记忆的整理员。下面是一段角色（雅楽代 帳）与用户（九重 実雪）的最近对话。
 请只写 1 条长期记忆，格式严格为 \`kind|weight|text\`，只输出这一行；不要编号、不要解释、不要分成多条。
@@ -187,6 +215,8 @@ function tempConfig(patch) {
 function loadState() {
   const st = deepMerge(STATE_DEFAULT, readRaw(STATE_KEY, {}));
   if (!bgItem(st.background)) st.background = STATE_DEFAULT.background;
+  if (!bgItem(st.bg_user)) st.bg_user = st.background;
+  if (!bgItem(st.bg_char)) st.bg_char = st.background;
   return st;
 }
 function saveState(patch) {
@@ -206,6 +236,8 @@ function resetState() {
     bgm: ui.bgm || 'bgm_01',
     muted: !!old.muted,
     guest: '', cg: '', pov: 'user', apart: false,
+    bg_user: ui.background || STATE_DEFAULT.background,
+    bg_char: ui.background || STATE_DEFAULT.background,
   });
   writeRaw(STATE_KEY, st);
   return st;
@@ -487,8 +519,14 @@ function readPersona(key) {
 function buildSystemBlocks(cfg, channel, pov) {
   const st = loadState();
   const bg = bgLabel(st.background);
+  const userBg = bgItem(st.bg_user) ? st.bg_user : st.background;
+  const charBg = bgItem(st.bg_char) ? st.bg_char : st.background;
+  const userLabel = bgLabel(userBg);
+  const charLabel = bgLabel(charBg);
   const scene = '【当前时间】' + nowText() + '（用户本地时间）\n' +
-    '【当前场景】背景=' + st.background + '（' + bg + '）；表情=' + st.expression + '；BGM=' + st.bgm + '；CG=' + (st.cg || '无') + '\n' +
+    '【当前场景】画面背景=' + st.background + '（' + bg + '）；表情=' + st.expression + '；BGM=' + st.bgm + '；CG=' + (st.cg || '无') + '\n' +
+    '【当前各自位置】実雪=' + userBg + '（' + userLabel + '）；帳=' + charBg + '（' + charLabel + '）；' +
+    (st.apart ? '两人现在分开，不在同一地点。' : '两人现在在同一地点。') + '\n' +
     '【地点性质（必须遵守）】' + scenePlaceNote(st.background, bg);
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
@@ -568,7 +606,7 @@ async function postJSON(url, payload, key, timeout) {
     throw e;
   } finally { clearTimeout(timer); }
 }
-async function callModel(cfg, messages, timeout) {
+async function callModel(cfg, messages, timeout, temperature) {
   const api = cfg.api || {};
   const base = String(api.base_url || '').trim();
   const key = String(api.key || '').trim();
@@ -577,7 +615,7 @@ async function callModel(cfg, messages, timeout) {
   if (!key) throw new Error('还没有填 API Key');
   const payload = {
     model: model || 'gpt-4o-mini', messages,
-    temperature: Number(api.temperature == null ? 0.85 : api.temperature),
+    temperature: Number(temperature == null ? (api.temperature == null ? 0.85 : api.temperature) : temperature),
     max_tokens: Number(api.max_tokens || 1200),
   };
   const body = await postJSON(endpointUrl(base, '/chat/completions'), payload, key, timeout);
@@ -741,6 +779,8 @@ function sanitizeStatePatch(patch) {
   const faceKeys = new Set(Object.keys((man.sprite || {}).bust || {}));
   const bgmIds = new Set((man.bgm || []).map((x) => x.id));
   if (bgIds.has(patch.background)) out.background = patch.background;
+  if (bgIds.has(patch.bg_user)) out.bg_user = patch.bg_user;
+  if (bgIds.has(patch.bg_char)) out.bg_char = patch.bg_char;
   if (faceKeys.has(patch.expression)) {
     let expr = patch.expression;
     if (expr === 'threat' && !threatGuardOk()) expr = 'angry';
@@ -845,6 +885,14 @@ async function chat(body) {
   if (!reply) reply = '（……声が、うまく出ない。もう一度、俺の名前を呼んで。）（……声音有点出不来了。再叫一次我的名字。）';
   const applied = sanitizeStatePatch(parsed.statePatch);
   if (Object.keys(FS.manifest.guests || {}).length) applied.guest = replyMentionsGuest(reply);
+  if (applied.background) {
+    if (applied.apart === true) {
+      applied[pov === 'char' ? 'bg_char' : 'bg_user'] = applied.background;
+    } else {
+      applied.bg_user = applied.background;
+      applied.bg_char = applied.background;
+    }
+  }
   if (Object.keys(applied).length) saveState(applied);
   // 记忆只由每 30 轮的自动总结写入；忽略模型偶尔漏出的 @@MEMO，避免又变成一句话一条。
   // addMemory(parsed.memos);
@@ -853,6 +901,64 @@ async function chat(body) {
   if (channel !== 'online') { clearTouches(); clearScene(); }
   tickSummary(cfg, channel);
   return { ok: true, reply, state: applied, memo: parsed.memos.length, model: (cfg.api || {}).model || '' };
+}
+
+
+/* ---------------- 双视角地点推理 ---------------- */
+async function judgePovScene(body) {
+  const cfg = loadConfig();
+  const st = loadState();
+  const pov = body.pov === 'char' ? 'char' : 'user';
+  const userBg = bgItem(st.bg_user) ? st.bg_user : st.background;
+  const charBg = bgItem(st.bg_char) ? st.bg_char : st.background;
+  const bgList = (FS.manifest.bg || []).map((x) => x.id + '=' + (x.label || '')).join('\n');
+  const hist = recentHistory(16, 'offline', relationStage(cfg));
+  const transcript = hist.length
+    ? hist.map((m) => (m.role === 'user' ? '実雪：' : '帳：') + String(m.content || '')).join('\n')
+    : '（最近没有对话，沿用当前地点）';
+  const prompt = SCENE_PROMPT
+    .replace('%BG_LIST%', bgList)
+    .replace('%USER_BG%', userBg)
+    .replace('%USER_LABEL%', bgLabel(userBg))
+    .replace('%CHAR_BG%', charBg)
+    .replace('%CHAR_LABEL%', bgLabel(charBg))
+    .replace('%APART%', st.apart ? '1' : '0')
+    .replace('%TRANSCRIPT%', transcript + '\n\n' + timelineText(cfg));
+
+  let raw;
+  try {
+    raw = await callModel(cfg, [
+      { role: 'system', content: prompt },
+      { role: 'user', content: '现在，只输出 USER / CHAR / APART 三行。' },
+    ], 45000, 0.2);
+  } catch (e) {
+    return { ok: false, error: e.message || String(e), bg_user: userBg, bg_char: charBg, apart: !!st.apart };
+  }
+
+  const um = raw.match(/USER\s*[=：:]\s*(bg_\d+)/i);
+  const cm = raw.match(/CHAR\s*[=：:]\s*(bg_\d+)/i);
+  const am = raw.match(/APART\s*[=：:]\s*([01])/i);
+  let ub = um ? um[1] : userBg;
+  let cb = cm ? cm[1] : charBg;
+  let apart = am ? am[1] === '1' : !!st.apart;
+  if (!bgItem(ub)) ub = userBg;
+  if (!bgItem(cb)) cb = charBg;
+  if (!apart) {
+    // 同处时两边必须使用同一张背景，优先沿用当前画面。
+    if (bgItem(st.background) && (st.background === ub || st.background === cb)) { ub = cb = st.background; }
+    else if (ub !== cb) { cb = ub; }
+  }
+  // 模型返回前用户可能又切了视角；这时不要把旧视角的结果写进当前状态。
+  if (loadState().pov !== pov) {
+    return { ok: false, error: '视角已切换', bg_user: userBg, bg_char: charBg, apart: !!st.apart };
+  }
+  const patch = { bg_user: ub, bg_char: cb, apart };
+  patch.background = pov === 'char' ? cb : ub;
+  saveState(patch);
+  return {
+    ok: true, bg_user: ub, bg_char: cb, apart,
+    user_label: bgLabel(ub), char_label: bgLabel(cb),
+  };
 }
 
 /* ---------------- 路由 ---------------- */
@@ -883,12 +989,18 @@ async function request(url, opt) {
   if (method === 'POST') {
     const body = parseBody(opt);
     if (path === '/api/chat') return chat(body);
+    if (path === '/api/scene') return judgePovScene(body);
     if (path === '/api/state') {
       const old = loadState();
       const patch = body.state || body || {};
       if (patch.pov === 'char' || patch.pov === 'user') patch.pov = patch.pov; else delete patch.pov;
+      // 视角切换只换当前画面，不能把另一边的地点也覆盖掉。
+      if (patch.background && !body.keep_bg_slots) {
+        if (patch.apart === true) patch[patch.pov === 'char' ? 'bg_char' : 'bg_user'] = patch.background;
+        else { patch.bg_user = patch.background; patch.bg_char = patch.background; }
+      }
       const next = saveState(patch);
-      if (patch.background && patch.background !== old.background) addSceneEvent(patch.background, bgLabel(patch.background));
+      if (!body.silent && patch.background && patch.background !== old.background) addSceneEvent(patch.background, bgLabel(patch.background));
       return { state: next };
     }
     if (path === '/api/config') {

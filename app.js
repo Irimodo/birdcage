@@ -17,6 +17,7 @@ const S = {
   attachNotes: [],
   bgIndex: 0,
   bgmStarted: false,
+  povJudgeSeq: 0,
   lastCgAt: 0,
   mode: 'offline',
   histOffline: [],
@@ -116,6 +117,9 @@ async function boot() {
   S.cfg = cfgRes.config;
   S.manifest = manRes.manifest;
   S.state = stRes.state;
+  // 重开时回到当前视角自己的地点，而不是另一边的背景
+  const bootBg = (S.state.pov === 'char' ? S.state.bg_char : S.state.bg_user);
+  if (bootBg && bgItem(bootBg)) S.state.background = bootBg;
 
   buildSelects();
   await applyState(S.state, true);
@@ -306,12 +310,19 @@ function setNear(dist, faceKey, instant) {
   if (instant) requestAnimationFrame(() => { el.style.transition = ''; });
 }
 
-function pushState(patch) {
+function pushState(patch, opt) {
   return getJSON('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state: patch }),
+    body: JSON.stringify(Object.assign({ state: patch }, opt || {})),
   }).catch(() => null);
+}
+function bgPatchForCurrent(id) {
+  const pov = currentPov();
+  const patch = { background: id, apart: !!(S.state && S.state.apart) };
+  if (S.state && S.state.apart) patch[pov === 'char' ? 'bg_char' : 'bg_user'] = id;
+  else { patch.bg_user = id; patch.bg_char = id; }
+  return patch;
 }
 
 const IMG_CACHE = new Map();
@@ -401,15 +412,49 @@ async function applyState(patch, instant) {
   if (S.mode === 'online') paintAvatar();
 }
 
+async function refreshPovScene(pov) {
+  const seq = ++S.povJudgeSeq;
+  try {
+    const res = await getJSON('/api/scene', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pov }),
+    });
+    if (!res || !res.ok || seq !== S.povJudgeSeq || currentPov() !== pov) return;
+    const patch = {
+      bg_user: res.bg_user, bg_char: res.bg_char, apart: !!res.apart,
+    };
+    const target = pov === 'char' ? res.bg_char : res.bg_user;
+    const changed = target && target !== S.state.background;
+    S.state = Object.assign({}, S.state, patch);
+    if (target) patch.background = target;
+    if (changed) {
+      await applyState(patch, false);
+      const label = pov === 'char' ? res.char_label : res.user_label;
+      if (label) toast('地点：' + label);
+    } else {
+      syncPovUi(currentPov());
+      document.body.classList.toggle('apart', !!S.state.apart);
+    }
+  } catch (e) { /* 判断失败就维持当前画面，不打断 */ }
+}
+
 async function setPov(pov) {
   if (S.mode === 'online') { toast('线上模式不切视角'); return; }
   const next = pov === 'char' ? 'char' : 'user';
   S.state.pov = next;
+  // 先把各自记住的地点换上去；模型判断回来后再校正
+  const target = next === 'char' ? S.state.bg_char : S.state.bg_user;
+  if (target && bgItem(target) && target !== S.state.background) {
+    S.state.background = target;
+    setBackground(target, false);
+  }
   syncPovUi(next);
   setSprite(S.state.expression || 'normal', true);
   setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
   if (next === 'char') $('#near').classList.remove('show');
-  await pushState({ pov: next });
+  await pushState({ pov: next, background: S.state.background }, { silent: true, keep_bg_slots: true });
+  refreshPovScene(next);
 }
 
 function setApart(apart) {
@@ -681,7 +726,7 @@ function hitZone(e, el, kind) {
 }
 
 async function pat(zone) {
-  if (S.busy || S.typing || S.waitFn || !zone) return;
+  if (currentPov() === 'char' || S.busy || S.typing || S.waitFn || !zone) return;
   const act = '我' + TOUCH_ACT[zone];
   const bust = $('#sprite');
   bust.classList.remove('pat');
@@ -732,8 +777,23 @@ async function pat(zone) {
   }
 }
 
-$('#sprite').addEventListener('click', (e) => pat(hitZone(e, $('#sprite'), 'bust')));
-$('#near').addEventListener('click', (e) => { if ($('#near').classList.contains('show')) pat(hitZone(e, $('#near'), 'near')); });
+/* 双击才算“拍一拍”：单击、误触直接忽略 */
+let patTapAt = 0, patTapZone = '', patTapTimer = null;
+function tapPat(zone) {
+  if (!zone) return;
+  const now = Date.now();
+  if (now - patTapAt <= 420 && patTapZone === zone) {
+    patTapAt = 0; patTapZone = '';
+    if (patTapTimer) { clearTimeout(patTapTimer); patTapTimer = null; }
+    pat(zone);
+    return;
+  }
+  patTapAt = now; patTapZone = zone;
+  if (patTapTimer) clearTimeout(patTapTimer);
+  patTapTimer = setTimeout(() => { patTapAt = 0; patTapZone = ''; patTapTimer = null; }, 420);
+}
+$('#sprite').addEventListener('click', (e) => tapPat(hitZone(e, $('#sprite'), 'bust')));
+$('#near').addEventListener('click', (e) => { if ($('#near').classList.contains('show')) tapPat(hitZone(e, $('#near'), 'near')); });
 
 /* 点对话框 = 跳过打字 / 直接下一句 */
 $('#dialog').addEventListener('click', () => {
@@ -1282,7 +1342,9 @@ $('#fBg').onchange = () => {
   const id = $('#fBg').value;
   if (!bgItem(id)) return;
   setBackground(id);
-  pushState({ background: id });
+  const patch = bgPatchForCurrent(id);
+  S.state = Object.assign({}, S.state, patch);
+  pushState(patch);
 };
 $('#fFace').onchange = () => {
   const k = $('#fFace').value;
@@ -1384,12 +1446,13 @@ $('#btnSave').onclick = async () => {
     syncPovUi(currentPov());
     $('#saveStatus').textContent = '已保存';
     setBackground(bg);
+    Object.assign(S.state, bgPatchForCurrent(bg));
     setSprite(face);
     setNear(dist, face);
     setBgm(bgm);
     startAudio();
     // 多次改背景时，以这次保存的最后一个值为准；服务端只记最后一次
-    await pushState({ background: bg, expression: face, dist, bgm, apart: S.state.apart });
+    await pushState(Object.assign(bgPatchForCurrent(bg), { expression: face, dist, bgm, apart: S.state.apart }));
     setTimeout(() => { $('#saveStatus').textContent = ''; }, 1800);
   } else {
     $('#saveStatus').textContent = '保存失败';
