@@ -609,6 +609,13 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   background: #1d1a16; border: 1px solid rgba(200,169,122,.28);
   color: #cfc4b2; font-size: 17px; cursor: pointer; flex: none;
 }
+.line-retry {
+  display: none; flex: none; padding: 8px 12px; border-radius: 16px;
+  background: rgba(200,169,122,.14);
+  border: 1px solid rgba(200,169,122,.5);
+  color: #c8a97a; font: inherit; font-size: 14px; cursor: pointer;
+}
+.line-retry.show { display: block; }
 .line-send {
   flex: none; padding: 9px 16px; border-radius: 16px;
   background: linear-gradient(180deg, #8aa96b, #6f9055);

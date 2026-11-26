@@ -1021,18 +1021,18 @@ function enqueue() {
 }
 
 const retryBtn = $('#btnRetry');
+const lineRetry = $('#lineRetry');
 function updateRetryBtn() {
+  const btns = [retryBtn, lineRetry].filter(Boolean);
   const arr = S.mode === 'online' ? S.histOnline : S.histOffline;
   const last = arr && arr.length ? arr[arr.length - 1] : null;
   const canRegen = !S.busy && !S.queue.length && last && last.role === 'assistant';
   if (S.retry) {
-    retryBtn.textContent = '重试';
-    retryBtn.classList.add('show');
+    btns.forEach((b) => { b.textContent = '重试'; b.classList.add('show'); });
   } else if (canRegen) {
-    retryBtn.textContent = '重来';
-    retryBtn.classList.add('show');
+    btns.forEach((b) => { b.textContent = '重来'; b.classList.add('show'); });
   } else {
-    retryBtn.classList.remove('show');
+    btns.forEach((b) => b.classList.remove('show'));
   }
 }
 
@@ -1134,7 +1134,7 @@ async function regenerateLast() {
   await sendChat(payload);
 }
 
-retryBtn.onclick = () => {
+function onRetryClick() {
   if (S.busy) return;
   if (S.retry) {
     const p = S.retry;
@@ -1145,7 +1145,9 @@ retryBtn.onclick = () => {
     return;
   }
   regenerateLast();
-};
+}
+retryBtn.onclick = onRetryClick;
+if (lineRetry) lineRetry.onclick = onRetryClick;
 
 /* 首次打开：让模型演一个开场（只在没历史且已配置接口时） */
 async function opening() {
