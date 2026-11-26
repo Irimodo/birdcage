@@ -707,31 +707,48 @@ function cleanLines(body) {
     if (!s) return;
     if (s.startsWith('```') || s.startsWith('~~~')) { fence = !fence; return; }
     if (fence) return;
-    if (/^(call|tool_call|function_call|assistant|system)\s*[:：]/i.test(s)) return;
+    if (/^(call|tool_call|function_call|assistant|system|default_api|agw_emit|content)\s*[:：{]/i.test(s)) return;
+    if (/^@@/.test(s)) return;
     s = s.replace(/^line\s*\d+\s*(?:\([^)]*\))?\s*[:：]/i, '');
     s = s.replace(/^（?(?:dialogue|narration|inner|thought|台词|心声|旁白)）?\s*[:：]?\s*/i, '');
     s = s.replace(/\*\*/g, '').replace(/`/g, '');
-    s = s.replace(/^[*#>]+/, '').trim();
+    s = s.replace(/^[*#>]+/, '').trim().replace(/^["']+|["']+$/g, '').replace(/}+$/, '').trim();
     if (!s) return;
     if (!/[\u3040-\u30ff\u3400-\u9fff]/.test(s)) return;
     out.push(s);
   });
   return out.slice(0, 12).join('\n');
 }
+function sanitizeModelOutput(raw) {
+  let s = String(raw || '').replace(/\r/g, '');
+  // 有些模型会把控制行拆成 @@ST / ATE 两截，先拼回来
+  s = s.replace(/@@\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
+  // 去掉 default_api / agw_emit 这类工具调用包装，只留下 content 里的正文
+  s = s.replace(/(^|\n)\s*(?:default_api|tool_call|function_call)\s*:[^\n{]*\{\s*content\s*:\s*/gi, '$1');
+  s = s.replace(/default_api\s*:[^\n{]*\{\s*content\s*:\s*/gi, '');
+  s = s.replace(/\bagw_emit_[0-9a-z]+\s*\{\s*content\s*:\s*/gi, '');
+  // 控制行如果被挤在正文同一行，拆回独立一行
+  s = s.replace(/([^\n])\s+@@STATE/gi, '$1\n@@STATE');
+  // 去掉包装残留的单独括号行
+  s = s.replace(/(^|\n)\s*[}\]"']+\s*(?=\n|$)/g, '$1');
+  return s;
+}
 function splitReply(raw) {
+  raw = sanitizeModelOutput(raw);
   const statePatch = {}, memos = [];
   let webQuery = '', section = '';
   const keep = [];
   String(raw || '').replace(/\r/g, '').split('\n').forEach((ln) => {
-    const s = ln.trim();
+    let s = ln.trim().replace(/^["']+|["']+$/g, '');
     if (s.startsWith('@@WEB')) { webQuery = s.slice(5).trim().replace(/^[：:]+/, ''); return; }
     if (s.startsWith('@@STATE')) {
       section = 'state';
-      s.slice(6).replace(/，/g, ' ').split(/\s+/).forEach((kv) => {
+      s = s.slice(6).replace(/[}\]"']+\s*$/g, '').trim();
+      s.replace(/，/g, ' ').split(/\s+/).forEach((kv) => {
         if (!kv.includes('=')) return;
         const i = kv.indexOf('=');
         const k = kv.slice(0, i).trim().toLowerCase();
-        const v = kv.slice(i + 1).trim();
+        const v = kv.slice(i + 1).trim().replace(/[}\]"']+$/g, '');
         if (k === 'bg' || k === 'background') statePatch.background = v || '';
         else if (k === 'face' || k === 'expression') statePatch.expression = v || '';
         else if (k === 'bgm') statePatch.bgm = v || '';

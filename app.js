@@ -527,6 +527,22 @@ function parseLine(line) {
 
 function setSpeaker(name) { speakerEl().textContent = name; }
 
+/* 历史里可能留着旧版泄漏的工具包装：显示前再洗一遍，别让 default_api 出现在抽屉里 */
+function cleanAssistantText(text) {
+  let s = String(text || '').replace(/\r/g, '');
+  s = s.replace(/@@\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
+  s = s.replace(/(^|\n)\s*(?:default_api|tool_call|function_call)\s*:[^\n{]*\{\s*content\s*:\s*/gi, '$1');
+  s = s.replace(/default_api\s*:[^\n{]*\{\s*content\s*:\s*/gi, '');
+  s = s.replace(/\bagw_emit_[0-9a-z]+\s*\{\s*content\s*:\s*/gi, '');
+  return s.split('\n').map((line) => {
+    let t = line.trim().replace(/^["']+|["']+$/g, '');
+    const at = t.search(/@@STATE/i);
+    if (at >= 0) t = t.slice(0, at).trim();
+    if (!t || /^@@/.test(t)) return '';
+    if (/^(?:default_api|agw_emit|tool_call|function_call|content)\s*[:：{]/i.test(t)) return '';
+    return t;
+  }).filter(Boolean).join('\n');
+}
 /* 历史：照原版的样子，一行「名字：内容」，不用气泡；他发来的一串也按行拆 */
 function renderHistory(pairs, target) {
   target.innerHTML = '';
@@ -539,7 +555,8 @@ function renderHistory(pairs, target) {
   }
   pairs.forEach((p) => {
     const isUser = p.role === 'user';
-    String(p.content || '').split('\n').map((s) => s.trim()).filter(Boolean).forEach((s) => {
+    const body = isUser ? String(p.content || '') : cleanAssistantText(p.content);
+    body.split('\n').map((s) => s.trim()).filter(Boolean).forEach((s) => {
       const charPov = isUser && p.pov === 'char';
       const act = isUser && (/^[（(]/.test(s) || charPov); // 她自己的动作 / 帳视角旁白都不挂名字
       const pl = act ? { who: '', text: s } : (isUser ? { who: NAME_ME, text: s } : parseLine(s));
@@ -1029,7 +1046,9 @@ function paintAvatar() {
 
 /* 框里只留最近一句：有历史就接着上一次他的话 */
 function showLastLine(hist) {
-  const lastAssistant = [...(hist || [])].reverse().find((x) => x.role === 'assistant');
+  const cleanHist = (hist || []).map((x) => x.role === 'assistant' ? Object.assign({}, x, { content: cleanAssistantText(x.content) }) : x)
+    .filter((x) => x.role !== 'assistant' || x.content);
+  const lastAssistant = [...cleanHist].reverse().find((x) => x.role === 'assistant');
   if (!lastAssistant) {
     setSpeaker('');
     sayEl().className = 'say';
