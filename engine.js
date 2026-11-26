@@ -363,6 +363,11 @@ function historyForApi(channel) {
   const list = h[channel === 'online' ? 'online' : 'offline'];
   return list.map((x) => ({ role: x.role, content: x.text, t: x.t, pov: x.pov || 'user' }));
 }
+function cleanAssistantForPrompt(text) {
+  let s = sanitizeModelOutput(text);
+  s = cleanLines(s);
+  return s.trim();
+}
 function recentHistory(turns, channel, stage = 'A') {
   const h = loadHistory();
   const lines = [];
@@ -371,7 +376,11 @@ function recentHistory(turns, channel, stage = 'A') {
     if (obj.role === 'assistant' && HISTORY_BAD_RE.test(obj.text)) return;
     if (obj.role === 'assistant' && stage !== 'C' && WIFE_WORD_RE.test(obj.text)) return;
     let text = obj.text;
-    if (obj.role === 'assistant') text = text.replace('雅楽代君', '\u0000NAME\u0000').replace(/君/g, 'あなた').replace(/\u0000NAME\u0000/g, '雅楽代君');
+    if (obj.role === 'assistant') {
+      text = cleanAssistantForPrompt(text);
+      if (!text) return;
+      text = text.replace('雅楽代君', '\u0000NAME\u0000').replace(/君/g, 'あなた').replace(/\u0000NAME\u0000/g, '雅楽代君');
+    }
     lines.push({ role: obj.role, content: text });
   });
   return lines.slice(-turns * 2);
@@ -574,7 +583,23 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
   msgs.push({ role: 'user', content: userText });
   const budget = Number((cfg.prompt || {}).max_chars || 24000);
   let total = msgs.reduce((n, m) => n + String(m.content || '').length, 0);
-  while (msgs.length > 2 && total > budget) { total -= String(msgs[1].content || '').length; msgs.splice(1, 1); }
+  // 历史末尾必须是 assistant，否则会在 current user 前留下一条没被回答的 user，
+  // 模型可能把它和当前这条一起回答，看起来就像“复读上上轮”。
+  while (msgs.length > 2 && msgs[msgs.length - 2].role === 'user') {
+    total -= String(msgs[msgs.length - 2].content || '').length;
+    msgs.splice(msgs.length - 2, 1);
+  }
+  // 超出预算时按“一整轮”删，不要只删半轮，避免留下孤立的 user 消息。
+  while (total > budget && msgs.length > 3) {
+    const a = msgs[1], b = msgs[2];
+    if (a && a.role === 'user' && b && b.role === 'assistant') {
+      total -= String(a.content || '').length + String(b.content || '').length;
+      msgs.splice(1, 2);
+    } else {
+      total -= String(a.content || '').length;
+      msgs.splice(1, 1);
+    }
+  }
   if (total > budget) {
     const over = total - budget;
     msgs[msgs.length - 1].content = msgs[msgs.length - 1].content.slice(0, Math.max(200, msgs[msgs.length - 1].content.length - over));
@@ -721,14 +746,14 @@ function cleanLines(body) {
 }
 function sanitizeModelOutput(raw) {
   let s = String(raw || '').replace(/\r/g, '');
-  // 有些模型会把控制行拆成 @@ST / ATE 两截，先拼回来
-  s = s.replace(/@@\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
+  // 有些模型会把控制行拆成 @@ST / ATE，或者少一个 @，先统一拼回来
+  s = s.replace(/@+\s*@*\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
   // 去掉 default_api / agw_emit 这类工具调用包装，只留下 content 里的正文
   s = s.replace(/(^|\n)\s*(?:default_api|tool_call|function_call)\s*:[^\n{]*\{\s*content\s*:\s*/gi, '$1');
   s = s.replace(/default_api\s*:[^\n{]*\{\s*content\s*:\s*/gi, '');
   s = s.replace(/\bagw_emit_[0-9a-z]+\s*\{\s*content\s*:\s*/gi, '');
-  // 控制行如果被挤在正文同一行，拆回独立一行
-  s = s.replace(/([^\n])\s+@@STATE/gi, '$1\n@@STATE');
+  // 控制行如果被挤在正文同一行（哪怕中间没有空格），都拆回独立一行
+  s = s.replace(/([^\n])[ \t]*@@STATE/gi, '$1\n@@STATE');
   // 去掉包装残留的单独括号行
   s = s.replace(/(^|\n)\s*[}\]"']+\s*(?=\n|$)/g, '$1');
   return s;

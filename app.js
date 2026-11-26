@@ -530,12 +530,13 @@ function setSpeaker(name) { speakerEl().textContent = name; }
 /* 历史里可能留着旧版泄漏的工具包装：显示前再洗一遍，别让 default_api 出现在抽屉里 */
 function cleanAssistantText(text) {
   let s = String(text || '').replace(/\r/g, '');
-  s = s.replace(/@@\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
+  s = s.replace(/@+\s*@*\s*S\s*T\s*A\s*T\s*E/gi, '@@STATE');
   s = s.replace(/(^|\n)\s*(?:default_api|tool_call|function_call)\s*:[^\n{]*\{\s*content\s*:\s*/gi, '$1');
   s = s.replace(/default_api\s*:[^\n{]*\{\s*content\s*:\s*/gi, '');
   s = s.replace(/\bagw_emit_[0-9a-z]+\s*\{\s*content\s*:\s*/gi, '');
   return s.split('\n').map((line) => {
     let t = line.trim().replace(/^["']+|["']+$/g, '');
+    t = t.replace(/([^\n])[ \t]*@@STATE/gi, '$1\n@@STATE');
     const at = t.search(/@@STATE/i);
     if (at >= 0) t = t.slice(0, at).trim();
     if (!t || /^@@/.test(t)) return '';
@@ -1665,7 +1666,8 @@ async function activeNotifyRegistration() {
   ]);
 }
 function notificationPreview(text) {
-  const lines = String(text || '').replace(/@@[^\n]*/g, '').split('\n')
+  const cleaned = typeof cleanAssistantText === 'function' ? cleanAssistantText(text) : String(text || '');
+  const lines = cleaned.replace(/@@[^\n]*/g, '').split('\n')
     .map((line) => line.trim().replace(/[「」]/g, ''))
     .filter(Boolean);
   const first = lines.find((line) => !/^（.*）$/.test(line)) || lines[0] || '';
