@@ -6,7 +6,7 @@
     "source_exe": "deitsuanogame_zh.exe",
     "built_at": "2026-11-25 16:22:59",
     "note": "原包为全年龄恋爱向作品，未发现 18+ 素材；「裏」相关图未纳入。 表情标注按实看图重命名（键名不变）。",
-    "rev": 21,
+    "rev": 22,
     "visual": "近景（816×624 全屏特写）／半身（全身裁到胯）两档，由角色自己判断何时凑近"
   },
   "sprite": {
@@ -398,17 +398,134 @@
       "bust": {
         "normal": {
           "file": "sprite/chou_child/normal.png.webp",
-          "label": "小时候·常服",
-          "source": "童年立绘（AI 重绘，参考庭前幼时 CG）",
+          "label": "小时候·平静",
+          "source": "原包 chara/26 帳幼少期1.png（半身裁切 751x685）",
           "size": [
             751,
             685
           ]
         },
         "smile": {
-          "file": "sprite/chou_child/normal.png.webp",
+          "file": "sprite/chou_child/smile.png.webp",
           "label": "小时候·微笑",
-          "source": "童年立绘（AI 重绘，参考庭前幼时 CG）",
+          "source": "原包 chara/26 帳幼少期3.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "hurt": {
+          "file": "sprite/chou_child/hurt.png.webp",
+          "label": "小时候·开心",
+          "source": "原包 chara/26 帳幼少期2.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "sulk": {
+          "file": "sprite/chou_child/sulk.png.webp",
+          "label": "小时候·难过",
+          "source": "原包 chara/26 帳幼少期8.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "down": {
+          "file": "sprite/chou_child/down.png.webp",
+          "label": "小时候·难过",
+          "source": "原包 chara/26 帳幼少期8.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "closed_smile": {
+          "file": "sprite/chou_child/closed_smile.png.webp",
+          "label": "小时候·闭眼微笑",
+          "source": "原包 chara/26 帳幼少期5.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "surprised": {
+          "file": "sprite/chou_child/surprised.png.webp",
+          "label": "小时候·惊讶",
+          "source": "原包 chara/26 帳幼少期4.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "angry": {
+          "file": "sprite/chou_child/angry.png.webp",
+          "label": "小时候·生气",
+          "source": "原包 chara/26 帳幼少期9.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "grin": {
+          "file": "sprite/chou_child/grin.png.webp",
+          "label": "小时候·得意",
+          "source": "原包 chara/26 帳幼少期9.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "grin_blush": {
+          "file": "sprite/chou_child/grin_blush.png.webp",
+          "label": "小时候·脸红",
+          "source": "原包 chara/26 帳幼少期12r.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "laugh": {
+          "file": "sprite/chou_child/laugh.png.webp",
+          "label": "小时候·大笑",
+          "source": "原包 chara/26 帳幼少期7.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "laugh_blush": {
+          "file": "sprite/chou_child/laugh_blush.png.webp",
+          "label": "小时候·大笑·脸红",
+          "source": "原包 chara/26 帳幼少期11照れ.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "awkward": {
+          "file": "sprite/chou_child/awkward.png.webp",
+          "label": "小时候·为难",
+          "source": "原包 chara/26 帳幼少期10.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "threat": {
+          "file": "sprite/chou_child/threat.png.webp",
+          "label": "小时候·生气",
+          "source": "原包 chara/26 帳幼少期9.png（半身裁切 751x685）",
+          "size": [
+            751,
+            685
+          ]
+        },
+        "silhouette": {
+          "file": "sprite/chou_child/silhouette.png.webp",
+          "label": "小时候·阴沉",
+          "source": "原包 chara/26 帳幼少期9.png（半身裁切 751x685）",
           "size": [
             751,
             685

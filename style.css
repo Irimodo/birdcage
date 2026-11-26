@@ -322,7 +322,7 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 body.pov-char .near { opacity: 0 !important; pointer-events: none; }
 body.pov-user.apart .sprite,
 body.pov-user.apart .near { opacity: 0 !important; pointer-events: none; }
-body.timeline-e .sprite { height: 45% !important; background-size: auto 100% !important; background-position: center bottom !important; }
+body.timeline-e .sprite { height: 89% !important; background-size: auto 100% !important; background-position: center bottom !important; }
 .pov-flag {
   display: none;
   position: absolute; z-index: 12;
@@ -724,3 +724,4 @@ body.portrait .ambient { display: block; }
   filter: blur(26px) brightness(.22) saturate(.8);
   transform: scale(1.15);
 }
+
