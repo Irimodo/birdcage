@@ -1482,6 +1482,50 @@ $('#fDist').onchange = () => {
 };
 $('#fBgm').onchange = () => { setBgm($('#fBgm').value); startAudio(); };
 
+let modelChoices = [];
+
+function renderModelChoices() {
+  const box = $('#modelList');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!modelChoices.length) { box.hidden = true; return; }
+  const cur = $('#fModel').value.trim();
+  modelChoices.forEach((m) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'model-choice' + (m === cur ? ' on' : '');
+    b.textContent = m;
+    b.addEventListener('click', () => {
+      $('#fModel').value = m;
+      $('#modelsOut').textContent = m;
+      closeModelChoices();
+    });
+    box.appendChild(b);
+  });
+}
+
+function openModelChoices() {
+  if (!modelChoices.length) return;
+  renderModelChoices();
+  $('#modelList').hidden = false;
+}
+
+function closeModelChoices() {
+  const box = $('#modelList');
+  if (box) box.hidden = true;
+}
+
+$('#btnModelToggle').onclick = (e) => {
+  e.stopPropagation();
+  if ($('#modelList').hidden) openModelChoices(); else closeModelChoices();
+};
+$('#fModel').addEventListener('click', (e) => { e.stopPropagation(); openModelChoices(); });
+$('#fModel').addEventListener('focus', openModelChoices);
+document.addEventListener('pointerdown', (e) => {
+  if (e.target && e.target.closest && !e.target.closest('.model-picker')) closeModelChoices();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModelChoices(); });
+
 $('#btnModels').onclick = async () => {
   const out = $('#modelsOut');
   out.textContent = '拉取中…';
@@ -1494,15 +1538,11 @@ $('#btnModels').onclick = async () => {
     body: JSON.stringify({ config: { api: api } }),
   });
   if (!r.ok) { out.textContent = r.error || '拉取失败'; return; }
-  const list = $('#modelList');
-  list.innerHTML = '';
-  (r.models || []).forEach((m) => {
-    const o = document.createElement('option');
-    o.value = m;
-    list.appendChild(o);
-  });
-  out.textContent = r.models.length + ' 个（点输入框可选）';
-  if (!r.models.length) out.textContent = '接口没返回模型';
+  modelChoices = (r.models || []).map(String);
+  renderModelChoices();
+  if (!modelChoices.length) { out.textContent = '接口没返回模型'; return; }
+  out.textContent = modelChoices.length + ' 个（点 ▾ 展开）';
+  openModelChoices();
 };
 
 $('#btnTest').onclick = async () => {  const out = $('#testOut');

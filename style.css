@@ -729,3 +729,40 @@ body.portrait .ambient { display: block; }
   transform: scale(1.15);
 }
 
+
+
+/* 模型名：自绘下拉，手机和桌面都能展开完整列表 */
+.model-picker { position: relative; }
+.model-line { display: flex; align-items: center; gap: 6px; }
+.model-line input[type=text] { flex: 1; min-width: 0; width: auto; }
+.model-toggle { flex: 0 0 auto; padding: 7px 10px; line-height: 1; }
+.model-list {
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(200,169,122,.25);
+  border-radius: 4px;
+  background: #17120f;
+  padding: 4px;
+}
+.model-list[hidden] { display: none; }
+.model-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  color: #cfc4b2;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  cursor: pointer;
+  word-break: break-all;
+}
+.model-choice:hover, .model-choice.on { background: rgba(200,169,122,.12); color: var(--gold); }
+body.touch .model-toggle { font-size: 20px; padding: 9px 12px; }
+body.touch .model-list { max-height: 45vh; }
+body.touch .model-choice { font-size: 21px; padding: 12px 10px; }

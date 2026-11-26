@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=22">
 <link rel="icon" href="icon-192.png?v=22">
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
 <div class="ambient" id="ambient"></div>
@@ -122,10 +122,13 @@
           <input type="password" id="fKey" placeholder="sk-...">
           <div class="hint" id="keyHint">只存在这台设备的浏览器里，不上传；换设备或清缓存要重新填。</div>
         </div>
-        <div class="field">
+        <div class="field model-picker">
           <label>模型名 Model</label>
-          <input type="text" id="fModel" list="modelList" placeholder="gpt-4o-mini / deepseek-chat / ...">
-          <datalist id="modelList"></datalist>
+          <div class="model-line">
+            <input type="text" id="fModel" placeholder="gpt-4o-mini / deepseek-chat / ..." autocomplete="off">
+            <button type="button" class="mini-btn model-toggle" id="btnModelToggle" aria-label="展开模型列表">▾</button>
+          </div>
+          <div class="model-list" id="modelList" hidden></div>
           <div class="hint"><button class="mini-btn" id="btnModels">拉取可用模型</button> <span class="mini" id="modelsOut"></span></div>
         </div>
         <button class="btn" id="btnTest">测试连接</button>
@@ -286,6 +289,6 @@
 
 <script src="pure-data.js?v=38"></script>
 <script src="engine.js?v=35"></script>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>
