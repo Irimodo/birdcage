@@ -128,9 +128,10 @@ async function boot() {
   const hist = hisRes.history || [];      // 线下说过的话
   S.histOffline = hist;
   S.histOnline = hisOn.history || [];     // 线上发过的消息（另一条线，不互相复制）
-  renderHistory(hist, $('#histLog'));
+  renderHistory(hist, $('#histLog'), 'offline');
   renderOnlineHistory(S.histOnline);
   showLastLine(hist);
+  updateRetryBtn();
 
   const ui = S.cfg.ui || {};
   setSpeed(ui.typing_speed ?? 30);
@@ -547,7 +548,9 @@ function cleanAssistantText(text) {
   }).filter(Boolean).join('\n');
 }
 /* 历史：照原版的样子，一行「名字：内容」，不用气泡；他发来的一串也按行拆 */
-function renderHistory(pairs, target) {
+/* 一段「你一句 + 他一句」编成一组，右上角的 × 只删这一段，删完不再进上下文 */
+function renderHistory(pairs, target, channel) {
+  const ch = channel === 'online' ? 'online' : 'offline';
   target.innerHTML = '';
   if (!pairs || !pairs.length) {
     const d = document.createElement('div');
@@ -556,20 +559,73 @@ function renderHistory(pairs, target) {
     target.appendChild(d);
     return;
   }
-  pairs.forEach((p) => {
-    const isUser = p.role === 'user';
-    const body = isUser ? String(p.content || '') : cleanAssistantText(p.content);
-    body.split('\n').map((s) => s.trim()).filter(Boolean).forEach((s) => {
-      const charPov = isUser && p.pov === 'char';
-      const act = isUser && (/^[（(]/.test(s) || charPov); // 她自己的动作 / 帳视角旁白都不挂名字
-      const pl = act ? { who: '', text: s } : (isUser ? { who: NAME_ME, text: s } : parseLine(s));
-      const d = document.createElement('div');
-      d.className = 'hrow ' + (isUser ? (pl.who ? 'me' : 'nar') : (pl.ambient ? 'npc' : (pl.who ? 'him' : 'nar')));
-      d.textContent = (pl.who ? pl.who + '：' : '') + pl.text;
-      target.appendChild(d);
+  let i = 0;
+  while (i < pairs.length) {
+    const start = i;
+    const p = pairs[i];
+    const group = [p];
+    if (p && p.role === 'user' && pairs[i + 1] && pairs[i + 1].role === 'assistant') {
+      group.push(pairs[i + 1]);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'hgroup';
+    group.forEach((item) => {
+      const isUser = item.role === 'user';
+      const body = isUser ? String(item.content || '') : cleanAssistantText(item.content);
+      body.split('\n').map((s) => s.trim()).filter(Boolean).forEach((s) => {
+        const charPov = isUser && item.pov === 'char';
+        const act = isUser && (/^[（(]/.test(s) || charPov); // 她自己的动作 / 帳视角旁白都不挂名字
+        const pl = act ? { who: '', text: s } : (isUser ? { who: NAME_ME, text: s } : parseLine(s));
+        const d = document.createElement('div');
+        d.className = 'hrow ' + (isUser ? (pl.who ? 'me' : 'nar') : (pl.ambient ? 'npc' : (pl.who ? 'him' : 'nar')));
+        d.textContent = (pl.who ? pl.who + '：' : '') + pl.text;
+        wrap.appendChild(d);
+      });
     });
-  });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'hdel';
+    del.title = group.length > 1 ? '删除这段对话' : '删除这条记录';
+    del.setAttribute('aria-label', del.title);
+    del.textContent = '×';
+    del.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteHistoryRange(ch, start, group.length);
+    });
+    wrap.appendChild(del);
+    target.appendChild(wrap);
+    i += group.length;
+  }
   target.scrollTop = target.scrollHeight;
+}
+
+async function deleteHistoryRange(channel, index, count, quiet) {
+  if (S.busy) { toast('等这一轮回复完再删'); return false; }
+  const ch = channel === 'online' ? 'online' : 'offline';
+  try {
+    const r = await getJSON('/api/history/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: ch, index, count }),
+    });
+    if (!r.ok) { toast(r.error || '删除失败'); return false; }
+    const hist = r.history || [];
+    if (ch === 'online') {
+      S.histOnline = hist;
+      renderOnlineHistory(hist);
+    } else {
+      S.histOffline = hist;
+      showLastLine(hist);
+    }
+    if ((S.histView || 'offline') === ch) paintHistView(false);
+    updateRetryBtn();
+    if (!quiet) toast('已删除，不再进入上下文');
+    return true;
+  } catch (e) {
+    toast('删除失败：' + e.message);
+    return false;
+  }
 }
 
 /* 本地也记一笔，抽屉才不会停在打开那一刻的旧内容 */
@@ -597,7 +653,7 @@ function scrollHistBottom() {
 function paintHistView(keepBottom) {
   const ch = S.histView || 'offline';
   const arr = ch === 'online' ? S.histOnline : S.histOffline;
-  renderHistory(arr, $('#histLog'));
+  renderHistory(arr, $('#histLog'), ch);
   if (keepBottom !== false) {
     scrollHistBottom();
     setTimeout(scrollHistBottom, 120);
@@ -885,6 +941,7 @@ async function pat(zone) {
     S.busy = false;
     btnSend.disabled = false;
     btnSend.textContent = '发送';
+    updateRetryBtn();
   }
 }
 
@@ -923,6 +980,7 @@ function queueLabel() {
   const n = S.queue.length;
   flushBtn.classList.toggle('show', n > 0);
   flushBtn.textContent = n > 0 ? '回复（' + n + '）' : '回复';
+  updateRetryBtn();
   const hint = $('#lineHint');
   if (hint) {
     hint.classList.toggle('on', n > 0);
@@ -963,26 +1021,42 @@ function enqueue() {
 }
 
 const retryBtn = $('#btnRetry');
-function showRetry(on) { retryBtn.classList.toggle('show', !!on); }
+function updateRetryBtn() {
+  const arr = S.mode === 'online' ? S.histOnline : S.histOffline;
+  const last = arr && arr.length ? arr[arr.length - 1] : null;
+  const canRegen = !S.busy && !S.queue.length && last && last.role === 'assistant';
+  if (S.retry) {
+    retryBtn.textContent = '重试';
+    retryBtn.classList.add('show');
+  } else if (canRegen) {
+    retryBtn.textContent = '重来';
+    retryBtn.classList.add('show');
+  } else {
+    retryBtn.classList.remove('show');
+  }
+}
 
 async function sendChat(payload) {
   const channel = payload.channel || S.mode;
   if (S.waitFn) S.waitFn();          // 手动模式卡在等点击时，新消息直接放行
+  S.retry = null;
   S.busy = true;
   btnSend.disabled = true;
   btnSend.textContent = '…';
   if (channel === 'online') typingBubble(true);
+  updateRetryBtn();
 
   try {
     const res = await getJSON('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: payload.text, attach_note: payload.notes, channel, pov: payload.pov || currentPov() }),
+      body: JSON.stringify({ text: payload.text, attach_note: payload.notes, channel, pov: payload.pov || currentPov(), regen: payload.regen === true }),
     });
     typingBubble(false);
     if (!res.ok) {
+      if (payload.regen) await refreshAfterRegen(channel);
       S.retry = payload;              // 留着，点「重试」原样再发一次
-      showRetry(true);
+      updateRetryBtn();
       if (res.need_key) {
         toast('接口还没填。右上角「设置」→ 填 Base URL / Key / 模型名');
         if (channel === 'online') addBubble('him', '（接口还没接上。去设置里填 Base URL / Key / 模型名。）');
@@ -999,7 +1073,6 @@ async function sendChat(payload) {
       return;
     }
     S.retry = null;
-    showRetry(false);
     pushHist(channel, 'user', payload.text || '（发来一个文件）', { pov: payload.pov || currentPov() });
     if (res.state && channel === 'offline') await applyState(res.state, false);
     pushHist(channel, 'assistant', res.reply || '', { pov: payload.pov || currentPov() });
@@ -1008,13 +1081,15 @@ async function sendChat(payload) {
     else await playReply(res.reply || '');
   } catch (e) {
     typingBubble(false);
+    if (payload.regen) await refreshAfterRegen(channel);
     S.retry = payload;
-    showRetry(true);
+    updateRetryBtn();
     toast('请求失败：' + e.message + '　·点「重试」再发一次');
   } finally {
     S.busy = false;
     btnSend.disabled = false;
     btnSend.textContent = '发送';
+    updateRetryBtn();
     if (S.mode === 'online') $('#lineInput').focus(); else inputEl.focus();
   }
 }
@@ -1032,13 +1107,44 @@ async function flushQueue() {
   await sendChat({ text, notes, channel: S.mode });
 }
 
+async function regenerateLast() {
+  if (S.busy) return;
+  const channel = S.mode;
+  const arr = channel === 'online' ? S.histOnline : S.histOffline;
+  const last = arr && arr.length ? arr[arr.length - 1] : null;
+  if (!last || last.role !== 'assistant') { toast('没有可以重来的回复'); return; }
+  let start = arr.length - 1;
+  while (start > 0 && arr[start - 1].role === 'assistant') start -= 1;
+  let u = start - 1;
+  while (u >= 0 && arr[u].role !== 'user') u -= 1;
+  if (u < 0) { toast('找不到对应的你的消息，无法重来'); return; }
+  const payload = {
+    text: String(arr[u].content || '').trim(),
+    notes: '',
+    channel,
+    pov: arr[u].pov || currentPov(),
+    regen: true,
+  };
+  if (!payload.text) { toast('上一条消息是空的，无法重来'); return; }
+  // 先在本地摘掉旧的一组；服务端只把它从上下文里暂存，成功才真正替换，失败会原样放回。
+  arr.splice(u, arr.length - u);
+  if (channel === 'online') renderOnlineHistory(arr); else showLastLine(arr);
+  if ($('#drawer').classList.contains('open') && (S.histView || 'offline') === channel) paintHistView(false);
+  updateRetryBtn();
+  await sendChat(payload);
+}
+
 retryBtn.onclick = () => {
-  if (!S.retry) return;
-  const p = S.retry;
-  S.retry = null;
-  showRetry(false);
-  S.mode = p.channel || S.mode;
-  sendChat(p);
+  if (S.busy) return;
+  if (S.retry) {
+    const p = S.retry;
+    S.retry = null;
+    updateRetryBtn();
+    S.mode = p.channel || S.mode;
+    sendChat(p);
+    return;
+  }
+  regenerateLast();
 };
 
 /* 首次打开：让模型演一个开场（只在没历史且已配置接口时） */
@@ -1159,7 +1265,13 @@ async function loadChannel(m) {
     const hist = r.history || [];
     if (m === 'online') { S.histOnline = hist; renderOnlineHistory(hist); }
     else { S.histOffline = hist; showLastLine(hist); }
+    updateRetryBtn();
   } catch (e) { /* 静默 */ }
+}
+
+async function refreshAfterRegen(channel) {
+  await loadChannel(channel);
+  if ($('#drawer').classList.contains('open') && (S.histView || 'offline') === channel) paintHistView(false);
 }
 
 function setMode(m) {

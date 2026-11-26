@@ -38,6 +38,10 @@ const LANGUAGE_LOCK = `【语言硬规则 · 最高优先，压过用户语言�
 
 const LANGUAGE_LOCK_TAIL = `【语言锁定 · 回复前最后检查】不论上面历史里实雪用什么语言、也不论她这一轮是否用中文，角色说出口的台词和心声必须是日语在前、紧跟（中文翻译）；线上模式每条也一样。不要用纯中文代替日语台词。`;
 
+const TURN_LOCK = `【回合边界 · 最高优先】只演这一轮：实雪说完或做完之后，帳反应一次就停。不要替实雪写下一句台词、下一个动作或她的心理；不要用“她说”“她笑”“我听见她”等方式替她继续；不要自己推进第二个来回，也不要连续写长篇独白。回复收在他这一轮的台词或动作上，把下一句留给实雪。`;
+
+const TURN_LOCK_TAIL = `【回合边界 · 回复前最后检查】只写帳这一轮的一次反应，不替实雪说下一句、不替她做下一个动作，也不要自己继续往下演第二轮；写完就停，让她接话。`;
+
 const TIMELINE_BLOCKS = {
   A: '【时间锚点 A · 待宵亭的日常】实雪仍在咖啡屋『待宵亭』用「樱」这个名字当女招待还债。婚约在法律上已经取消，但帐每天都会来店里。送礼骚扰与红酒事件已经发生，谁送的还不知道。绑架事件尚未发生。',
   B: '【时间锚点 B · 车内的邀请】已经查明「橘八寻」这个律师并不存在。帐第二次要实雪住进雅乐代家，她拒绝了。帐与平井镜太郎已经和解、互称名字。绑架事件尚未发生。',
@@ -565,6 +569,7 @@ function buildSystemBlocks(cfg, channel, pov) {
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
     LANGUAGE_LOCK,
+    TURN_LOCK,
     (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
     manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
@@ -630,6 +635,7 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
     content: '【最新一条】下面才是实雪这一轮刚发来的消息。以上全部是历史，只作背景：不要回答、复述或续写历史里的任何 user，也不要先把更早的话接一遍。只回应下面这一条。',
   });
   msgs.splice(msgs.length - 1, 0, { role: 'system', content: LANGUAGE_LOCK_TAIL });
+  msgs.splice(msgs.length - 1, 0, { role: 'system', content: TURN_LOCK_TAIL });
   return msgs;
 }
 
@@ -954,10 +960,33 @@ async function chat(body) {
     const head = attachNote.split('【附件正文')[0].trim();
     histText = (text.replace(attachNote, '').trim() + '\n' + head + '〔正文已读，见当轮回复〕').trim();
   }
+  // 「重来」：先把上一组 user+assistant 从上下文里摘掉，但保留备份；
+  // 模型失败就把旧的一组原样放回去，不能因为一次失败把好记录也弄丢。
+  let regenBackup = null, regenStart = -1;
+  if (body.regen === true) {
+    const h = loadHistory();
+    const arr = h[channel];
+    const last = arr.length ? arr[arr.length - 1] : null;
+    if (!last || last.role !== 'assistant') return { ok: false, error: '没有可以重来的回复' };
+    let start = arr.length - 1;
+    while (start > 0 && arr[start - 1].role === 'assistant') start -= 1;
+    let u = start - 1;
+    while (u >= 0 && arr[u].role !== 'user') u -= 1;
+    if (u < 0) return { ok: false, error: '找不到对应的你的消息，无法重来' };
+    regenStart = u;
+    regenBackup = arr.slice(u);
+    arr.splice(u, arr.length - u);
+    writeRaw(HIST_KEY, h);
+  }
   let raw;
   try {
     raw = await callModel(cfg, buildMessages(cfg, text, extraSystem, channel, pov), 90000);
   } catch (e) {
+    if (regenBackup) {
+      const h = loadHistory();
+      h[channel].splice(regenStart, 0, ...regenBackup);
+      writeRaw(HIST_KEY, h);
+    }
     const msg = e.message || String(e);
     return { ok: false, error: msg, need_key: /API 地址|API Key/.test(msg) };
   }
@@ -1126,6 +1155,19 @@ async function request(url, opt) {
         importPayload(body.data || body);
         return { ok: true };
       } catch (e) { return { ok: false, error: e.message || String(e) }; }
+    }
+    if (path === '/api/history/delete') {
+      const ch = body.channel === 'online' ? 'online' : 'offline';
+      const idx = Number(body.index);
+      const cnt = Math.max(1, Number(body.count) || 1);
+      const h = loadHistory();
+      if (!Number.isInteger(idx) || idx < 0 || idx >= h[ch].length) {
+        return { ok: false, error: '这条记录不在了' };
+      }
+      const n = Math.min(cnt, h[ch].length - idx);
+      h[ch].splice(idx, n);
+      writeRaw(HIST_KEY, h);
+      return { ok: true, removed: n, history: historyForApi(ch) };
     }
     if (path === '/api/history/clear') {
       const ch = u.searchParams.get('channel') === 'online' ? 'online' : 'offline';

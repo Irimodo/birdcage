@@ -766,3 +766,39 @@ body.portrait .ambient { display: block; }
 body.touch .model-toggle { font-size: 20px; padding: 9px 12px; }
 body.touch .model-list { max-height: 45vh; }
 body.touch .model-choice { font-size: 21px; padding: 12px 10px; }
+
+/* 历史分组 + 单段删除 */
+.hgroup {
+  position: relative;
+  margin: 0 0 12px;
+  padding-right: 34px;
+}
+.hgroup:last-child { margin-bottom: 0; }
+.hdel {
+  position: absolute;
+  top: -4px; right: 0;
+  width: 30px; height: 30px;
+  padding: 0;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: rgba(255, 237, 237, .38);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: .16s;
+}
+.hdel:hover {
+  color: #e6b0a6;
+  border-color: rgba(230, 176, 166, .35);
+  background: rgba(230, 176, 166, .08);
+}
+body.touch .hgroup { padding-right: 52px; }
+body.touch .hdel {
+  width: 44px; height: 44px;
+  top: -8px;
+  font-size: 26px;
+  color: rgba(255, 237, 237, .62);
+}
