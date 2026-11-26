@@ -607,6 +607,11 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
     const over = total - budget;
     msgs[msgs.length - 1].content = msgs[msgs.length - 1].content.slice(0, Math.max(200, msgs[msgs.length - 1].content.length - over));
   }
+  // 紧贴当前 user 放一条最新消息锚点：历史只当背景，别把更早的 user 当成待回答的问题。
+  msgs.splice(msgs.length - 1, 0, {
+    role: 'system',
+    content: '【最新一条】下面才是实雪这一轮刚发来的消息。以上全部是历史，只作背景：不要回答、复述或续写历史里的任何 user，也不要先把更早的话接一遍。只回应下面这一条。',
+  });
   return msgs;
 }
 
