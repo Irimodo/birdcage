@@ -117,13 +117,12 @@ async function boot() {
   S.state = stRes.state;
 
   buildSelects();
-  applyState(S.state, true);
+  await applyState(S.state, true);
   const hist = hisRes.history || [];      // 线下说过的话
   S.histOffline = hist;
   S.histOnline = hisOn.history || [];     // 线上发过的消息（另一条线，不互相复制）
   renderHistory(hist, $('#histLog'));
   renderOnlineHistory(S.histOnline);
-  paintAvatar();
   showLastLine(hist);
 
   const ui = S.cfg.ui || {};
@@ -287,7 +286,7 @@ function setNear(dist, faceKey, instant) {
   const el = $('#near');
   const bust = $('#sprite');
   const near = (S.manifest.sprite || {}).near || {};
-  if (dist !== 'near' || S.state.guest) {
+  if (currentPov() === 'char' || dist !== 'near' || S.state.guest) {
     el.classList.remove('show');
     bust.classList.remove('away');
     return;
@@ -309,14 +308,74 @@ function pushState(patch) {
   }).catch(() => null);
 }
 
-function applyState(patch, instant) {
+const IMG_CACHE = new Map();
+function preloadImage(url) {
+  if (!url) return Promise.resolve();
+  if (IMG_CACHE.has(url)) return IMG_CACHE.get(url);
+  const p = new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = () => { if (done) return; done = true; resolve(); };
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = url;
+    setTimeout(finish, 8000);
+  });
+  IMG_CACHE.set(url, p);
+  return p;
+}
+function currentPov() { return (S.state && S.state.pov) === 'char' ? 'char' : 'user'; }
+function syncPovUi(pov) {
+  const isChar = pov === 'char';
+  document.body.classList.toggle('pov-char', isChar);
+  const b = $('#btnPov');
+  if (b) {
+    b.textContent = isChar ? '帳' : '我';
+    b.title = isChar ? '当前：帳视角（我方输入为旁白）' : '当前：我方视角（実雪第一人称）';
+    b.classList.toggle('on', isChar);
+  }
+  const flag = $('#povFlag');
+  if (flag) flag.classList.toggle('show', isChar);
+  if (isChar) {
+    $('#near').classList.remove('show');
+    $('#sprite').classList.remove('pat');
+  }
+}
+async function preloadStateImages(patch) {
+  const pov = patch.pov === 'char' ? 'char' : (patch.pov === 'user' ? 'user' : currentPov());
+  const urls = [];
+  if (patch.background) { const it = bgItem(patch.background); if (it) urls.push(assetUrl(it.file)); }
+  if (pov !== 'char') {
+    if (patch.expression) {
+      const bust = ((S.manifest || {}).sprite || {}).bust || {};
+      const it = bust[patch.expression] || bust.normal;
+      if (it) urls.push(assetUrl(it.file));
+    }
+    if (patch.dist === 'near' && !patch.guest) {
+      const near = ((S.manifest || {}).sprite || {}).near || {};
+      const it = near[patch.expression] || near.normal;
+      if (it) urls.push(assetUrl(it.file));
+    }
+  }
+  if (patch.guest) {
+    const gg = ((S.manifest || {}).guests || {})[patch.guest];
+    if (gg) {
+      const key = (gg.bust || {})[S.guestFace] ? S.guestFace : (gg.order || ['calm'])[0];
+      const it = (gg.bust || {})[key];
+      if (it) urls.push(assetUrl(it.file));
+    }
+  }
+  await Promise.all(urls.map(preloadImage));
+}
+async function applyState(patch, instant) {
   if (!patch) return;
+  await preloadStateImages(patch);
   // 先把静音状态放好，再决定要不要加载 BGM
   if (patch.muted !== undefined) {
     audio.muted = !!patch.muted;
   }
   if (patch.background) setBackground(patch.background, instant);
-  if (patch.expression) setSprite(patch.expression, instant);
+  if (patch.expression && currentPov() !== 'char') setSprite(patch.expression, instant);
   if (patch.bgm) setBgm(patch.bgm);
   if (patch.cg !== undefined) showCg(patch.cg);
   if (patch.muted !== undefined && !patch.muted && S.bgmStarted) {
@@ -324,7 +383,21 @@ function applyState(patch, instant) {
   }
   S.state = Object.assign({}, S.state, patch);
   if (patch.guest !== undefined) setGuest(S.state.guest, S.guestFace || 'calm', instant);
+  syncPovUi(S.state.pov || 'user');
   setNear(S.state.dist || 'far', S.state.expression || 'normal', instant);
+  if (S.mode === 'online') paintAvatar();
+}
+
+async function setPov(pov) {
+  if (S.mode === 'online') { toast('线上模式不切视角'); return; }
+  const next = pov === 'char' ? 'char' : 'user';
+  S.state.pov = next;
+  syncPovUi(next);
+  if (next === 'user') {
+    setSprite(S.state.expression || 'normal', true);
+    setNear(S.state.dist || 'far', S.state.expression || 'normal', true);
+  }
+  await pushState({ pov: next });
 }
 
 /* ---------------- 文本：名牌 + 一句台词 ---------------- */
@@ -371,7 +444,8 @@ function renderHistory(pairs, target) {
   pairs.forEach((p) => {
     const isUser = p.role === 'user';
     String(p.content || '').split('\n').map((s) => s.trim()).filter(Boolean).forEach((s) => {
-      const act = isUser && /^[（(]/.test(s);            // 她自己的动作（如伸手摸头）也不挂名字
+      const charPov = isUser && p.pov === 'char';
+      const act = isUser && (/^[（(]/.test(s) || charPov); // 她自己的动作 / 帳视角旁白都不挂名字
       const pl = act ? { who: '', text: s } : (isUser ? { who: NAME_ME, text: s } : parseLine(s));
       const d = document.createElement('div');
       d.className = 'hrow ' + (pl.who ? (isUser ? 'me' : 'him') : 'nar');
@@ -383,9 +457,9 @@ function renderHistory(pairs, target) {
 }
 
 /* 本地也记一笔，抽屉才不会停在打开那一刻的旧内容 */
-function pushHist(channel, role, content) {
+function pushHist(channel, role, content, extra) {
   const arr = channel === 'online' ? S.histOnline : S.histOffline;
-  arr.push({ role, content });
+  arr.push(Object.assign({ role, content }, extra || {}));
   if ($('#drawer').classList.contains('open') && (S.histView || 'offline') === channel) {
     paintHistView(true);
   }
@@ -609,8 +683,8 @@ async function pat(zone) {
       await typeText('（……刚才那一下，他没有接上。）', 'inner');
       return;
     }
-    if (res.state) applyState(res.state, false);
-    pushHist('offline', 'assistant', res.reply || '');
+    if (res.state) await applyState(res.state, false);
+    pushHist('offline', 'assistant', res.reply || '', { pov: currentPov() });
     await playReply(res.reply || '');
   } catch (e) {
     toast('请求失败：' + e.message);
@@ -657,11 +731,17 @@ function enqueue() {
 
   inputEl.value = '';
   clearAttach();
-  S.queue.push({ text, notes });
+  const pov = currentPov();
+  S.queue.push({ text, notes, pov });
 
   const shown = text || '（发来一个文件）';
   if (S.mode === 'online') addBubble('me', shown);
-  else {
+  else if (pov === 'char') {
+    setSpeaker('');
+    const el = sayEl();
+    el.className = 'say nar';
+    el.textContent = shown;
+  } else {
     setSpeaker(NAME_ME);
     const el = sayEl();
     el.className = 'say me';
@@ -690,7 +770,7 @@ async function sendChat(payload) {
     const res = await getJSON('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: payload.text, attach_note: payload.notes, channel }),
+      body: JSON.stringify({ text: payload.text, attach_note: payload.notes, channel, pov: payload.pov || currentPov() }),
     });
     typingBubble(false);
     if (!res.ok) {
@@ -713,9 +793,9 @@ async function sendChat(payload) {
     }
     S.retry = null;
     showRetry(false);
-    pushHist(channel, 'user', payload.text || '（发来一个文件）');
-    if (res.state && channel === 'offline') applyState(res.state, false);
-    pushHist(channel, 'assistant', res.reply || '');
+    pushHist(channel, 'user', payload.text || '（发来一个文件）', { pov: payload.pov || currentPov() });
+    if (res.state && channel === 'offline') await applyState(res.state, false);
+    pushHist(channel, 'assistant', res.reply || '', { pov: payload.pov || currentPov() });
     if (channel === 'online') await playOnlineReply(res.reply || '');
     else await playReply(res.reply || '');
   } catch (e) {
@@ -765,7 +845,7 @@ async function opening() {
       }),
     });
     if (res.ok) {
-      if (res.state) applyState(res.state, false);
+      if (res.state) await applyState(res.state, false);
       await playReply(res.reply || '');
     }
   } catch (e) { /* 静默 */ }
@@ -868,7 +948,10 @@ function setMode(m) {
   S.mode = m;
   $('#online').classList.toggle('show', m === 'online');
   $('#btnMode').textContent = m === 'online' ? '线下' : '线上';
+  const pb = $('#btnPov'); if (pb) pb.classList.toggle('hide', m === 'online');
+  const pf = $('#povFlag'); if (pf) pf.classList.toggle('show', m !== 'online' && currentPov() === 'char');
   if (m === 'online') {
+    paintAvatar();
     loadChannel('online');
     setTimeout(() => $('#lineInput').focus(), 60);
   } else {
@@ -942,6 +1025,7 @@ function renderOnlineHistory(hist) {
   body.scrollTop = body.scrollHeight;
 }
 
+$('#btnPov').onclick = () => setPov(currentPov() === 'char' ? 'user' : 'char');
 $('#btnMode').onclick = () => setMode(S.mode === 'online' ? 'offline' : 'online');
 $('#lineBack').onclick = () => setMode('offline');
 $('#lineSend').onclick = () => {
@@ -964,7 +1048,7 @@ $('#btnReset').onclick = async () => {
   });
   if (!r.ok) { toast('重置失败'); return; }
   S.state = r.state;
-  applyState(r.state, true);
+  await applyState(r.state, true);
   toast('已回到默认画面');
 };
 document.addEventListener('keydown', (e) => {

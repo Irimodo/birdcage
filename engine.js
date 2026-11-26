@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
 
 const STATE_DEFAULT = {
   background: 'bg_010', expression: 'normal', dist: 'far', outfit: 'uniform',
-  cg: '', bgm: 'bgm_01', muted: false, guest: '',
+  cg: '', bgm: 'bgm_01', muted: false, guest: '', pov: 'user',
 };
 
 const TIMELINE_BLOCKS = {
@@ -196,7 +196,7 @@ function resetState() {
     outfit: ui.outfit || 'uniform',
     bgm: ui.bgm || 'bgm_01',
     muted: !!old.muted,
-    guest: '', cg: '',
+    guest: '', cg: '', pov: 'user',
   });
   writeRaw(STATE_KEY, st);
   return st;
@@ -320,7 +320,7 @@ function appendChat(role, text, extra, channel) {
 function historyForApi(channel) {
   const h = loadHistory();
   const list = h[channel === 'online' ? 'online' : 'offline'];
-  return list.map((x) => ({ role: x.role, content: x.text, t: x.t }));
+  return list.map((x) => ({ role: x.role, content: x.text, t: x.t, pov: x.pov || 'user' }));
 }
 function recentHistory(turns, channel, stage = 'A') {
   const h = loadHistory();
@@ -383,6 +383,20 @@ function relationRules(cfg) {
     '婚前的亲近方式是：来店里看她、请客、拿旧事逗她、问她“俺のこと、どう思ってる？”、被拒绝时笑着说“じゃあ、今日はここまでにしとくよ”。\n' +
     historyRule;
 }
+function povRules(pov) {
+  if (pov === 'char') {
+    return '【当前视角 · 雅楽代帳（我）的第一人称｜硬规则，优先于角色人设里的视角说明】\n' +
+      '旁白里的「我」＝帳，実雪是「她」。不要写「帳：……」这种第三人称。\n' +
+      '这一视角只允许帳的心理、感官和判断；実雪的心理不可见——不要输出她的括号心声，也不要用旁白替她解释她在想什么。她的情绪只能通过你看见的台词、表情、动作表现。\n' +
+      '用户发来的文字是帳视角下的旁白／动作，不是実雪的台词；把它当作正在发生的事，不要当作用户在说话，也不要复述它。\n' +
+      '帳自己的立绘不在画面里（你就在他身体里），不要写「我看着自己的脸」或「我的立绘」。';
+  }
+  return '【当前视角 · 九重実雪（我）的第一人称｜硬规则，优先于角色人设里的视角说明】\n' +
+    '旁白里的「我」＝実雪，帳是「他」。不要写「実雪：……」这种第三人称。\n' +
+    '这一视角只允许実雪的心理、感官和判断；帳的心理不可见——不要输出帳的括号心声，也不要用旁白直接解释他在想什么。他的情绪只能通过你看见的台词、表情、动作表现。\n' +
+    '用户发来的文字是実雪的动作／台词；不要在回复里替実雪补心理，也不要复述她刚说的话。\n' +
+    '画面里可以看见帳的立绘。';
+}
 function manifestDigest() {
   const man = FS.manifest || {};
   const exprs = [];
@@ -440,7 +454,7 @@ function readPersona(key) {
   const f = PERSONA_FILES[key] || '';
   return (FS.personas && FS.personas[f]) || '';
 }
-function buildSystemBlocks(cfg, channel) {
+function buildSystemBlocks(cfg, channel, pov) {
   const st = loadState();
   const bg = bgLabel(st.background);
   const scene = '【当前时间】' + nowText() + '（用户本地时间）\n' +
@@ -449,7 +463,7 @@ function buildSystemBlocks(cfg, channel) {
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
-    readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
+    (channel === 'online' ? '' : povRules(pov || st.pov)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
     manifestDigest(), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
@@ -471,8 +485,8 @@ function buildSystemBlocks(cfg, channel) {
   }
   return blocks.filter((b) => b && String(b).trim());
 }
-function buildMessages(cfg, userText, extraSystem, channel) {
-  const blocks = buildSystemBlocks(cfg, channel);
+function buildMessages(cfg, userText, extraSystem, channel, pov) {
+  const blocks = buildSystemBlocks(cfg, channel, pov);
   if (extraSystem) blocks.unshift(extraSystem);
   const turns = Number((cfg.prompt || {}).history_turns || 12);
   const msgs = [{ role: 'system', content: blocks.join('\n\n') }].concat(recentHistory(turns, channel, relationStage(cfg)));
@@ -586,6 +600,12 @@ function onlineFilter(text) {
     if (s) out.push(s);
   });
   return out.join('\n');
+}
+function povFilter(text, pov) {
+  if (pov !== 'user') return text;
+  const lines = String(text || '').split('\n').map((x) => x.trim()).filter(Boolean)
+    .filter((x) => !/^[（(]/.test(x));
+  return lines.join('\n') || '他沉默了一下。';
 }
 function parseMemoLine(s) {
   if (!s || ['-', '无', 'none'].includes(s.trim())) return [];
@@ -773,6 +793,7 @@ async function chat(body) {
   if (!text) return { ok: false, error: '空消息' };
   const extraSystem = String(body.extra_system || '').trim();
   const channel = body.channel === 'online' ? 'online' : 'offline';
+  const pov = body.pov === 'char' ? 'char' : 'user';
   let histText = text;
   if (attachNote) {
     const head = attachNote.split('【附件正文')[0].trim();
@@ -780,7 +801,7 @@ async function chat(body) {
   }
   let raw;
   try {
-    raw = await callModel(cfg, buildMessages(cfg, text, extraSystem, channel), 90000);
+    raw = await callModel(cfg, buildMessages(cfg, text, extraSystem, channel, pov), 90000);
   } catch (e) {
     const msg = e.message || String(e);
     return { ok: false, error: msg, need_key: /API 地址|API Key/.test(msg) };
@@ -788,13 +809,14 @@ async function chat(body) {
   const parsed = splitReply(raw);
   let reply = parsed.reply;
   if (channel === 'online') reply = onlineFilter(reply);
+  else reply = povFilter(reply, pov);
   if (!reply) reply = '（……声が、うまく出ない。もう一度、俺の名前を呼んで。）（……声音有点出不来了。再叫一次我的名字。）';
   const applied = sanitizeStatePatch(parsed.statePatch);
   if (Object.keys(FS.manifest.guests || {}).length) applied.guest = replyMentionsGuest(reply);
   if (Object.keys(applied).length) saveState(applied);
   addMemory(parsed.memos);
-  appendChat('user', histText, null, channel);
-  appendChat('assistant', reply, Object.keys(applied).length ? { state: applied } : null, channel);
+  appendChat('user', histText, { pov }, channel);
+  appendChat('assistant', reply, Object.assign({ pov }, Object.keys(applied).length ? { state: applied } : null), channel);
   if (channel !== 'online') { clearTouches(); clearScene(); }
   tickSummary(cfg, channel);
   return { ok: true, reply, state: applied, memo: parsed.memos.length, model: (cfg.api || {}).model || '' };
@@ -831,6 +853,7 @@ async function request(url, opt) {
     if (path === '/api/state') {
       const old = loadState();
       const patch = body.state || body || {};
+      if (patch.pov === 'char' || patch.pov === 'user') patch.pov = patch.pov; else delete patch.pov;
       const next = saveState(patch);
       if (patch.background && patch.background !== old.background) addSceneEvent(patch.background, bgLabel(patch.background));
       return { state: next };

@@ -312,6 +312,24 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
   padding: 5px 10px; border-radius: 4px; cursor: pointer;
 }
 .tbtn:hover { border-color: rgba(200,169,122,.7); color: var(--gold); }
+.tbtn.pov { min-width: 34px; text-align: center; }
+.tbtn.pov.on { color: #14100e; background: rgba(200,169,122,.92); border-color: rgba(200,169,122,.92); }
+.tbtn.hide { display: none; }
+
+/* 角色视角：他不在画面里（用户就在他身体里） */
+body.pov-char .sprite,
+body.pov-char .near { opacity: 0 !important; pointer-events: none; }
+.pov-flag {
+  display: none;
+  position: absolute; z-index: 12;
+  top: calc(66px + var(--safe-top-local, 0px)); left: 14px;
+  padding: 4px 9px; border-radius: 999px;
+  color: var(--gold); background: rgba(10,8,7,.72);
+  border: 1px solid rgba(200,169,122,.38);
+  font-size: 12px; letter-spacing: .12em;
+  pointer-events: none;
+}
+.pov-flag.show { display: block; }
 
 /* ---------- 历史抽屉 ---------- */
 .drawer {
@@ -506,13 +524,13 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 .online.show { display: flex; }
 
 .line-head {
-  flex: none; height: 62px;
+  flex: none; height: calc(62px + var(--safe-top-local, 0px));
   display: flex; align-items: center; gap: 10px;
-  padding: 0 12px;
+  padding: var(--safe-top-local, 0px) 12px 0;
   background: #14120f;
   border-bottom: 1px solid rgba(200,169,122,.22);
 }
-.line-back { width: 22px; font-size: 26px; color: #cfc4b2; cursor: pointer; line-height: 1; }
+.line-back { width: 38px; height: 100%; display: flex; align-items: center; justify-content: center; flex: none; font-size: 26px; color: #cfc4b2; cursor: pointer; line-height: 1; }
 .line-ava {
   width: 40px; height: 40px; border-radius: 50%;
   background: #2a251f center 18% no-repeat;
@@ -523,7 +541,7 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 .line-who { flex: 1; min-width: 0; }
 .line-name { font-size: 18px; letter-spacing: .06em; }
 .line-sub { font-size: 11px; color: #8e8272; letter-spacing: .12em; }
-.line-ico { color: #9a8d7c; font-size: 20px; }
+.line-ico { flex: none; color: #9a8d7c; font-size: 20px; }
 
 .line-body {
   flex: 1; min-height: 0;
@@ -602,11 +620,19 @@ body.touch .hrow { font-size: 26px; line-height: 1.7; }
 
 body.touch .topbar {
   height: calc(62px + var(--safe-top-local, 0px));
-  padding: var(--safe-top-local, 0px) 10px 0;
-  gap: 7px;
+  padding: var(--safe-top-local, 0px) 8px 0;
+  gap: clamp(3px, 1vw, 7px);
 }
 body.touch .title { font-size: 19px; letter-spacing: .2em; }
-body.touch .tbtn { font-size: 21px; padding: 8px 12px; border-radius: 6px; }
+body.touch .tbtn {
+  font-size: clamp(20px, 5.3vw, 25px);
+  padding: 6px clamp(5px, 1.4vw, 9px);
+  border-radius: 6px;
+  white-space: nowrap;
+  flex: none;
+}
+body.touch .tbtn.pov { min-width: 30px; }
+body.touch .pov-flag { top: calc(68px + var(--safe-top-local, 0px)); left: 10px; font-size: 20px; padding: 5px 10px; }
 
 body.touch .dialog {
   left: 6px; right: 6px; bottom: calc(82px + var(--safe-bottom-local, 0px));
@@ -626,9 +652,9 @@ body.touch .attach-chip { font-size: 20px; max-width: 190px; }
 body.touch .toast { bottom: 330px; font-size: 20px; max-width: 700px; }
 
 /* 线上（LINE 风）在手机上同样放大 */
-body.touch .line-head { height: 76px; gap: 12px; padding: 0 14px; }
-body.touch .line-back { font-size: 40px; width: 24px; }
-body.touch .line-ava { width: 54px; height: 54px; }
+body.touch .line-head { height: calc(76px + var(--safe-top-local, 0px)); gap: 12px; padding: var(--safe-top-local, 0px) 14px 0; }
+body.touch .line-back { font-size: 46px; width: 64px; }
+body.touch .line-ava { width: 64px; height: 64px; }
 body.touch .line-name { font-size: 28px; }
 body.touch .line-sub { font-size: 17px; letter-spacing: .08em; }
 body.touch .line-ico { font-size: 30px; }
