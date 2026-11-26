@@ -33,6 +33,11 @@ const STATE_DEFAULT = {
   cg: '', bgm: 'bgm_01', muted: false, guest: '', pov: 'user', apart: false,
 };
 
+const LANGUAGE_LOCK = `【语言硬规则 · 最高优先，压过用户语言和所有历史示例】不管実雪这一轮用中文、英文、日语，还是直接要求“说中文”，角色说出口的台词和心声都必须保持“日语在前，紧跟（中文翻译）”。例：「……おいで、実雪。」（……过来，实雪。）
+绝不能因为她的消息是中文，就把角色的台词改成纯中文；也不要用中文代替日语原文。旁白／动作／神态仍按输出格式写中文。线上模式同样：每条消息日文在前，紧跟（中文意思）。`;
+
+const LANGUAGE_LOCK_TAIL = `【语言锁定 · 回复前最后检查】不论上面历史里实雪用什么语言、也不论她这一轮是否用中文，角色说出口的台词和心声必须是日语在前、紧跟（中文翻译）；线上模式每条也一样。不要用纯中文代替日语台词。`;
+
 const TIMELINE_BLOCKS = {
   A: '【时间锚点 A · 待宵亭的日常】实雪仍在咖啡屋『待宵亭』用「樱」这个名字当女招待还债。婚约在法律上已经取消，但帐每天都会来店里。送礼骚扰与红酒事件已经发生，谁送的还不知道。绑架事件尚未发生。',
   B: '【时间锚点 B · 车内的邀请】已经查明「橘八寻」这个律师并不存在。帐第二次要实雪住进雅乐代家，她拒绝了。帐与平井镜太郎已经和解、互称名字。绑架事件尚未发生。',
@@ -559,6 +564,7 @@ function buildSystemBlocks(cfg, channel, pov) {
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
+    LANGUAGE_LOCK,
     (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
     manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
@@ -623,6 +629,7 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
     role: 'system',
     content: '【最新一条】下面才是实雪这一轮刚发来的消息。以上全部是历史，只作背景：不要回答、复述或续写历史里的任何 user，也不要先把更早的话接一遍。只回应下面这一条。',
   });
+  msgs.splice(msgs.length - 1, 0, { role: 'system', content: LANGUAGE_LOCK_TAIL });
   return msgs;
 }
 
