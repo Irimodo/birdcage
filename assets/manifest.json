@@ -913,7 +913,7 @@
     {
       "id": "bg_035",
       "file": "bg/主人公部屋.jpg.webp",
-      "label": "主人房",
+      "label": "九重的房间（公寓）",
       "source": "主人公部屋.jpg",
       "curated": true,
       "size": [
@@ -924,7 +924,7 @@
     {
       "id": "bg_036",
       "file": "bg/アパート夜.png.webp",
-      "label": "公寓（夜）",
+      "label": "公寓外观（夜）",
       "source": "アパート夜.png",
       "curated": true,
       "size": [
@@ -979,7 +979,7 @@
     {
       "id": "bg_048",
       "file": "bg/アパート昼.png.webp",
-      "label": "公寓（昼）",
+      "label": "公寓外观（昼）",
       "source": "アパート昼.png",
       "curated": false,
       "size": [
@@ -1067,7 +1067,7 @@
     {
       "id": "bg_056",
       "file": "bg/ケイの部屋.jpg.webp",
-      "label": "九重的房间",
+      "label": "京的房间",
       "source": "ケイの部屋.jpg",
       "curated": false,
       "size": [
@@ -1078,7 +1078,7 @@
     {
       "id": "bg_057",
       "file": "bg/ケイの部屋_窓際.png.webp",
-      "label": "九重的房间·窗边",
+      "label": "京的房间·窗边",
       "source": "ケイの部屋_窓際.png",
       "curated": false,
       "size": [
