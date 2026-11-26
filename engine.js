@@ -460,15 +460,24 @@ function povRules(pov) {
     '用户发来的文字是実雪的动作／台词；不要在回复里替実雪补心理，也不要复述她刚说的话。\n' +
     '同处时画面里可以看见帳的立绘；如果空间关系是分开，则看不到他。';
 }
-function manifestDigest() {
+function spriteGroupForTimeline(timeline) {
+  const base = (FS.manifest || {}).sprite || {};
+  if (String(timeline || '').toUpperCase() === 'E' && base.child) return base.child;
+  return base;
+}
+function activeSpriteGroup() {
+  return spriteGroupForTimeline(loadConfig().timeline);
+}
+function manifestDigest(cfg) {
   const man = FS.manifest || {};
+  const group = spriteGroupForTimeline((cfg || {}).timeline);
   const exprs = [];
-  Object.keys(((man.sprite || {}).bust || {})).forEach((k) => {
-    exprs.push(k + '=' + (((man.sprite || {}).bust || {})[k].label || ''));
+  Object.keys(group.bust || {}).forEach((k) => {
+    exprs.push(k + '=' + ((group.bust || {})[k].label || ''));
   });
   const bgs = [], bgms = [];
   (man.bg || []).slice(0, 60).forEach((it) => { if (it.curated) bgs.push(it.id + '=' + (it.label || '')); });
-  (man.bgm || []).slice(0, 60).forEach((it) => bgms.push(it.id + '=' + (it.label || '')));
+  (man.bgm || []).slice(0, 60).forEach((it) => { bgms.push(it.id + '=' + (it.label || '')); });
   const guests = [];
   Object.keys(man.guests || {}).forEach((gid) => {
     const g = man.guests[gid];
@@ -476,8 +485,11 @@ function manifestDigest() {
     guests.push(gid + '（' + (g.name || '') + '）表情键：' + keys);
   });
   const guestLine = guests.length ? '配角（可出场）：' + guests.join('；') + '\n' : '';
+  const exprNote = String((cfg || {}).timeline || '').toUpperCase() === 'E'
+    ? '（时间锚点 E：小时候立绘，仅半身）'
+    : '（近景/半身两档共用同一套键）';
   return '【可用素材 id（只能从这里选）】\n' +
-    '表情键：' + exprs.join('，') + '（近景/半身两档共用同一套键）\n' +
+    '表情键：' + exprs.join('，') + exprNote + '\n' +
     '距离：dist=far（半身） / dist=near（整屏近景特写）\n' +
     guestLine +
     '背景：' + bgs.join('，') + '\n' +
@@ -533,7 +545,7 @@ function buildSystemBlocks(cfg, channel, pov) {
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
   const blocks = [
     (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
-    manifestDigest(), readPersona('story'), (FS.rules && FS.rules.format) || '',
+    manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
   if (channel !== 'online') {
@@ -777,7 +789,7 @@ function sanitizeStatePatch(patch) {
   const out = {};
   const man = FS.manifest || {};
   const bgIds = new Set((man.bg || []).map((x) => x.id));
-  const faceKeys = new Set(Object.keys((man.sprite || {}).bust || {}));
+  const faceKeys = new Set(Object.keys((activeSpriteGroup().bust) || {}));
   const bgmIds = new Set((man.bgm || []).map((x) => x.id));
   if (bgIds.has(patch.background)) out.background = patch.background;
   if (bgIds.has(patch.bg_user)) out.bg_user = patch.bg_user;

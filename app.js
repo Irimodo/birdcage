@@ -28,7 +28,7 @@ const S = {
   queueTimer: null,
 };
 
-const FACE_ORDER = ['normal', 'sulk', 'down', 'closed_smile', 'surprised', 'angry',
+const FACE_ORDER = ['normal', 'smile', 'sulk', 'down', 'closed_smile', 'surprised', 'angry',
   'grin', 'grin_blush', 'laugh', 'laugh_blush', 'hurt', 'awkward', 'threat', 'silhouette'];
 
 function enc(u) { return String(u).split('/').map(encodeURIComponent).join('/'); }
@@ -170,15 +170,7 @@ function buildSelects() {
     bgSel.appendChild(o);
   });
 
-  const faceSel = $('#fFace');
-  faceSel.innerHTML = '';
-  const bust = (S.manifest.sprite || {}).bust || {};
-  FACE_ORDER.filter((k) => bust[k]).forEach((k) => {
-    const o = document.createElement('option');
-    o.value = k;
-    o.textContent = bust[k].label || k;
-    faceSel.appendChild(o);
-  });
+  fillFaceSelect((S.state && S.state.expression) || 'normal');
 
   const bgmSel = $('#fBgm');
   bgmSel.innerHTML = '';
@@ -191,7 +183,7 @@ function buildSelects() {
 
   const ui = S.cfg.ui || {};
   bgSel.value = ui.background || 'bg_010';
-  faceSel.value = ui.expression || 'normal';
+  $('#fFace').value = ui.expression || 'normal';
   bgmSel.value = ui.bgm || 'bgm_01';
 }
 
@@ -226,10 +218,28 @@ function setBackground(id, instant) {
   S.bgIndex++;
 }
 
-function activeSpriteGroup() {
+function spriteGroupForTimeline(timeline) {
   const base = (S.manifest || {}).sprite || {};
-  if (String((S.cfg || {}).timeline || '').toUpperCase() === 'E' && base.child) return base.child;
+  if (String(timeline || '').toUpperCase() === 'E' && base.child) return base.child;
   return base;
+}
+function activeSpriteGroup() {
+  return spriteGroupForTimeline((S.cfg || {}).timeline);
+}
+function fillFaceSelect(preferred, timeline) {
+  const faceSel = $('#fFace');
+  if (!faceSel) return;
+  const prev = preferred || faceSel.value;
+  const tl = (timeline === undefined || timeline === null) ? (S.cfg || {}).timeline : timeline;
+  const bust = (spriteGroupForTimeline(tl).bust) || {};
+  faceSel.innerHTML = '';
+  Object.keys(bust).forEach((k) => {
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = bust[k].label || k;
+    faceSel.appendChild(o);
+  });
+  if (prev && bust[prev]) faceSel.value = prev;
 }
 function setSprite(key, instant) {
   const bust = activeSpriteGroup().bust || {};
@@ -1401,6 +1411,10 @@ $('#btnTest').onclick = async () => {  const out = $('#testOut');
   out.textContent = r.ok ? '通了：' + (r.sample || '') : '失败：' + (r.error || '');
 };
 
+$('#fTimeline').addEventListener('change', () => {
+  fillFaceSelect('', $('#fTimeline').value);
+});
+
 $('#btnSave').onclick = async () => {
   const api = {
     base_url: $('#fBase').value.trim(),
@@ -1438,6 +1452,7 @@ $('#btnSave').onclick = async () => {
   });
   if (r.ok) {
     S.cfg = r.config;
+    fillFaceSelect($('#fFace').value);
     const bg = $('#fBg').value;
     const face = $('#fFace').value;
     const dist = $('#fDist').value === 'near' ? 'near' : 'far';
