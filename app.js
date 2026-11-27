@@ -26,6 +26,7 @@ const S = {
   memory: [],
   queue: [],
   queueTimer: null,
+  look: { bg: '', ava: '' },   // 线上聊天：自定义壁纸 / 对方头像（只存本机）
 };
 
 const FACE_ORDER = ['normal', 'smile', 'sulk', 'down', 'closed_smile', 'surprised', 'angry',
@@ -119,6 +120,7 @@ async function boot() {
   S.state = stRes.state;
   registerNotifyWorker();
   updateNotifyUI();
+  loadLook();
   // 重开时回到当前视角自己的地点，而不是另一边的背景
   const bootBg = (S.state.pov === 'char' ? S.state.bg_char : S.state.bg_user);
   if (bootBg && bgItem(bootBg)) S.state.background = bootBg;
@@ -130,6 +132,7 @@ async function boot() {
   S.histOnline = hisOn.history || [];     // 线上发过的消息（另一条线，不互相复制）
   renderHistory(hist, $('#histLog'), 'offline');
   renderOnlineHistory(S.histOnline);
+  applyOnlineLook();
   showLastLine(hist);
   updateRetryBtn();
 
@@ -662,6 +665,8 @@ function paintHistView(keepBottom) {
 async function loadDrawer(ch) {
   S.histView = ch;
   drawerTabPaint();
+  const co = $('#btnClearOnline');
+  if (co) co.hidden = ch !== 'online';
   paintHistView();
   $('#histLog').classList.add('loading');
   try {
@@ -1059,7 +1064,7 @@ async function sendChat(payload) {
       updateRetryBtn();
       if (res.need_key) {
         toast('接口还没填。右上角「设置」→ 填 Base URL / Key / 模型名');
-        if (channel === 'online') addBubble('him', '（接口还没接上。去设置里填 Base URL / Key / 模型名。）');
+        if (channel === 'online') sysBubble('接口还没接上 · 去设置里填 Base URL / Key / 模型名');
         else { setSpeaker(''); await typeText('（接口还没接上。去设置里填 Base URL / Key / 模型名，我才能开口。）', 'inner'); }
       } else {
         const raw = res.error || '出错了';
@@ -1067,16 +1072,18 @@ async function sendChat(payload) {
           ? '连不上接口（检查 Base URL / 网络 / 代理）'
           : raw;
         toast(plain + '　·点「重试」再发一次');
-        if (channel === 'online') addBubble('him', '（' + plain + '）');
+        if (channel === 'online') sysBubble(plain + ' · 点「重试」再发一次');
         else { setSpeaker(''); await typeText('（' + plain + '）', 'inner'); }
       }
       return;
     }
     S.retry = null;
+    if (channel === 'online') clearSysBubbles();
     pushHist(channel, 'user', payload.text || '（发来一个文件）', { pov: payload.pov || currentPov() });
     if (res.state && channel === 'offline') await applyState(res.state, false);
     pushHist(channel, 'assistant', res.reply || '', { pov: payload.pov || currentPov() });
-    showReplyNotification(res.reply || '');
+    // 线上按气泡逐条通知（在 playOnlineReply 里发），这里只处理线下
+    if (channel !== 'online') showReplyNotification(res.reply || '');
     if (channel === 'online') await playOnlineReply(res.reply || '');
     else await playReply(res.reply || '');
   } catch (e) {
@@ -1221,11 +1228,87 @@ function bustUrl(face) {
 }
 
 function paintAvatar() {
+  const head = $('#lineAva');
+  if (!head) return;
+  if (S.look && S.look.ava) {
+    head.style.backgroundImage = 'url("' + S.look.ava + '")';
+    head.style.backgroundSize = 'cover';
+    head.style.backgroundPosition = 'center';
+    return;
+  }
   const face = (S.state && S.state.expression) || 'normal';
   const u = bustUrl(face);
   if (!u) return;
-  const head = $('#lineAva');
-  if (head) head.style.backgroundImage = 'url("' + u + '")';
+  head.style.backgroundImage = 'url("' + u + '")';
+}
+
+/* ---------------- 线上聊天外观：壁纸 / 对方头像（只存本机，不上传） ---------------- */
+const LOOK_KEY = 'birdcage_online_look_v1';
+function loadLook() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LOOK_KEY) || '{}');
+    S.look = { bg: d.bg || '', ava: d.ava || '' };
+  } catch (e) { S.look = { bg: '', ava: '' }; }
+}
+function saveLook() {
+  try {
+    localStorage.setItem(LOOK_KEY, JSON.stringify(S.look));
+    return true;
+  } catch (e) {
+    toast('这两张图加起来太大了，浏览器存不下；换小一点的图');
+    return false;
+  }
+}
+function paintLineAvatars() {
+  document.querySelectorAll('#lineBody .bava').forEach((el) => {
+    if (S.look && S.look.ava) {
+      el.style.backgroundImage = 'url("' + S.look.ava + '")';
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+    }
+  });
+}
+function updateLookPreview() {
+  const b = $('#lookBgPrev'), a = $('#lookAvaPrev');
+  if (b) b.style.backgroundImage = S.look.bg ? 'url("' + S.look.bg + '")' : '';
+  if (a) a.style.backgroundImage = S.look.ava ? 'url("' + S.look.ava + '")' : '';
+  const bc = $('#btnLookBgClear'), ac = $('#btnLookAvaClear');
+  if (bc) bc.hidden = !S.look.bg;
+  if (ac) ac.hidden = !S.look.ava;
+}
+function applyOnlineLook() {
+  const wall = $('#lineWall');
+  const online = $('#online');
+  if (wall) wall.style.backgroundImage = S.look.bg ? 'url("' + S.look.bg + '")' : '';
+  if (online) online.classList.toggle('has-wall', !!S.look.bg);
+  paintAvatar();
+  paintLineAvatars();
+  updateLookPreview();
+}
+/* 读一张图，压到 maxSide 以内再转 dataURL；手机直接拍的原图几 MB，不压存不下 */
+function readImageFile(file, maxSide, quality) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('读不到这个文件'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('这不是一张能打开的图片'));
+      img.onload = () => {
+        const w0 = img.naturalWidth || img.width;
+        const h0 = img.naturalHeight || img.height;
+        const k = Math.min(1, maxSide / Math.max(w0, h0));
+        const w = Math.max(1, Math.round(w0 * k));
+        const h = Math.max(1, Math.round(h0 * k));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        try { resolve(cv.toDataURL('image/jpeg', quality || 0.85)); }
+        catch (e) { reject(e); }
+      };
+      img.src = String(fr.result || '');
+    };
+    fr.readAsDataURL(file);
+  });
 }
 
 /* 框里只留最近一句：有历史就接着上一次他的话 */
@@ -1283,7 +1366,7 @@ function setMode(m) {
   const pb = $('#btnPov'); if (pb) pb.classList.toggle('hide', m === 'online');
   const pf = $('#povFlag'); if (pf) pf.classList.toggle('show', m !== 'online' && currentPov() === 'char');
   if (m === 'online') {
-    paintAvatar();
+    applyOnlineLook();
     loadChannel('online');
     setTimeout(() => $('#lineInput').focus(), 60);
   } else {
@@ -1299,9 +1382,15 @@ function addBubble(who, text, kind) {
   if (who === 'him') {
     const av = document.createElement('div');
     av.className = 'bava';
-    const face = (S.state && S.state.expression) || 'normal';
-    const u = bustUrl(face);
-    if (u) av.style.backgroundImage = 'url("' + u + '")';
+    if (S.look && S.look.ava) {
+      av.style.backgroundImage = 'url("' + S.look.ava + '")';
+      av.style.backgroundSize = 'cover';
+      av.style.backgroundPosition = 'center';
+    } else {
+      const face = (S.state && S.state.expression) || 'normal';
+      const u = bustUrl(face);
+      if (u) av.style.backgroundImage = 'url("' + u + '")';
+    }
     row.appendChild(av);
   }
   const b = document.createElement('div');
@@ -1311,6 +1400,22 @@ function addBubble(who, text, kind) {
   body.appendChild(row);
   body.scrollTop = body.scrollHeight;
   return row;
+}
+
+function sysBubble(text) {
+  const body = $('#lineBody');
+  const row = document.createElement('div');
+  row.className = 'brow sys';
+  const b = document.createElement('div');
+  b.className = 'bubble sys';
+  b.textContent = text;
+  row.appendChild(b);
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+  return row;
+}
+function clearSysBubbles() {
+  document.querySelectorAll('#lineBody .brow.sys').forEach((n) => n.remove());
 }
 
 let typingRow = null;
@@ -1334,13 +1439,20 @@ function onlineText(ln) {
 async function playOnlineReply(reply) {
   const lines = String(reply).replace(/\r/g, '').split('\n').map((s) => s.trim()).filter(Boolean);
   let shown = 0;
+  const turn = Date.now();
+  const notices = [];
   for (const ln of lines) {
     const t = onlineText(ln);
     if (!t) continue;
     addBubble('him', t, 'say');
     shown += 1;
+    notices.push({ t, tag: 'birdcage-bubble-' + turn + '-' + shown });
     await new Promise((r) => setTimeout(r, 420));
   }
+  // 一条气泡一条通知：各自的 tag，且错开 0.9 秒，免得系统把它们并成一条/吞掉
+  notices.forEach((n, i) => {
+    setTimeout(() => showReplyNotification(n.t, false, { tag: n.tag }), 500 + i * 900);
+  });
   if (!shown) addBubble('him', '……', '');
   $('#lineBody').scrollTop = $('#lineBody').scrollHeight;
 }
@@ -1760,6 +1872,60 @@ $('#btnClearMem').onclick = async () => {
   toast('已清空');
 };
 
+/* ---------------- 线上聊天外观：选图 / 清除 ---------------- */
+async function pickLook(kind, file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) { toast('请选图片文件'); return; }
+  try {
+    const data = await readImageFile(file, kind === 'bg' ? 1600 : 480, kind === 'bg' ? 0.82 : 0.9);
+    const test = Object.assign({}, S.look);
+    test[kind] = data;
+    const old = S.look;
+    S.look = test;
+    if (!saveLook()) { S.look = old; return; }
+    applyOnlineLook();
+    toast(kind === 'bg' ? '聊天背景已换' : '头像已换');
+  } catch (e) {
+    toast('这张图读不了：' + (e.message || e));
+  }
+}
+if ($('#btnLookBg')) $('#btnLookBg').onclick = () => $('#lookBgFile').click();
+if ($('#lookBgFile')) $('#lookBgFile').onchange = (ev) => {
+  const f = (ev.target.files || [])[0];
+  ev.target.value = '';
+  pickLook('bg', f);
+};
+if ($('#btnLookAva')) $('#btnLookAva').onclick = () => $('#lookAvaFile').click();
+if ($('#lookAvaFile')) $('#lookAvaFile').onchange = (ev) => {
+  const f = (ev.target.files || [])[0];
+  ev.target.value = '';
+  pickLook('ava', f);
+};
+if ($('#btnLookBgClear')) $('#btnLookBgClear').onclick = () => {
+  S.look.bg = '';
+  if (saveLook()) applyOnlineLook();
+};
+if ($('#btnLookAvaClear')) $('#btnLookAvaClear').onclick = () => {
+  S.look.ava = '';
+  if (saveLook()) applyOnlineLook();
+};
+
+/* 线上这条线：清空对话与上下文（记忆保留，和线下互不影响） */
+if ($('#btnClearOnline')) $('#btnClearOnline').onclick = async () => {
+  if (!confirm('清空线上这条线的对话？他之后不会再看到这些消息（长期记忆保留）。')) return;
+  try {
+    const r = await getJSON('/api/history/clear?channel=online', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    if (!r.ok) { toast(r.error || '清空失败'); return; }
+    S.histOnline = [];
+    renderOnlineHistory([]);
+    if ((S.histView || 'offline') === 'online') paintHistView(false);
+    updateRetryBtn();
+    toast('线上对话已清空，不再进入上下文');
+  } catch (e) { toast('清空失败：' + e.message); }
+};
+
 /* ---------------- 导出 / 导入（纯前端：本机备份） ---------------- */
 $('#btnExport').onclick = async () => {
   const r = await getJSON('/api/export');
@@ -1909,12 +2075,14 @@ function notificationPreview(text) {
   const first = lines.find((line) => !/^（.*）$/.test(line)) || lines[0] || '';
   return first.replace(/[*_`#]/g, '').slice(0, 90);
 }
-async function showReplyNotification(text, force) {
+async function showReplyNotification(text, force, opts) {
   if (!notifyFlag() || !notifySupported() || Notification.permission !== 'granted') return;
   if (!force && !document.hidden && document.hasFocus()) return;
+  const o = opts || {};
   const preview = notificationPreview(text);
   const body = preview ? preview + (preview.length >= 90 ? '…' : '') : '他写好了，回来看。';
   const icon = new URL('icon-192.png?v=22', location.href).href;
+  const tag = o.tag || 'birdcage-reply';
   try {
     const reg = await activeNotifyRegistration();
     if (reg && reg.showNotification) {
@@ -1922,12 +2090,13 @@ async function showReplyNotification(text, force) {
         body,
         icon,
         badge: icon,
-        tag: 'birdcage-reply',
+        tag,
         renotify: true,
+        silent: false,
         data: { url: './' },
       });
     } else {
-      new Notification('帳', { body, icon, tag: 'birdcage-reply' });
+      new Notification('帳', { body, icon, tag });
     }
   } catch (e) { /* 通知失败不打断对话 */ }
 }

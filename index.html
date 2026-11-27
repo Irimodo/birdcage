@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=22">
 <link rel="icon" href="icon-192.png?v=22">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 <div class="ambient" id="ambient"></div>
@@ -45,6 +45,7 @@
 
   <!-- 线上模式：模仿 LINE 的聊天页（同一个他，只是换成手机聊天） -->
   <div class="online" id="online">
+    <div class="line-wall" id="lineWall"></div>
     <div class="line-head">
       <div class="line-back" id="lineBack">‹</div>
       <div class="line-ava" id="lineAva"></div>
@@ -91,6 +92,7 @@
         <button class="dtab on" data-ch="offline">线下</button>
         <button class="dtab" data-ch="online">线上</button>
       </span>
+      <button class="drawer-x warn" id="btnClearOnline" hidden>清空线上</button>
       <button class="drawer-x" id="drawerClose">关闭</button></h3>
     <div class="log" id="histLog"></div>
   </div>
@@ -209,6 +211,34 @@
       </div>
 
       <div class="group">
+        <h4>线上聊天</h4>
+        <div class="field">
+          <label>聊天背景图</label>
+          <div class="look-row">
+            <div class="look-prev look-bg" id="lookBgPrev"></div>
+            <div class="look-btns">
+              <button class="mini-btn" id="btnLookBg">选一张壁纸</button>
+              <button class="mini-btn" id="btnLookBgClear" hidden>清除</button>
+            </div>
+          </div>
+          <input type="file" id="lookBgFile" accept="image/*" hidden>
+          <div class="hint">只在线上模式生效，只存在这台设备。会自动压低画质，避免存不下。</div>
+        </div>
+        <div class="field">
+          <label>对方头像</label>
+          <div class="look-row">
+            <div class="look-prev look-ava" id="lookAvaPrev"></div>
+            <div class="look-btns">
+              <button class="mini-btn" id="btnLookAva">选一张头像</button>
+              <button class="mini-btn" id="btnLookAvaClear" hidden>清除</button>
+            </div>
+          </div>
+          <input type="file" id="lookAvaFile" accept="image/*" hidden>
+          <div class="hint">线上模式的顶栏和每条消息旁都会换成这张；不换就继续用他的表情立绘。</div>
+        </div>
+      </div>
+
+      <div class="group">
         <h4>通知</h4>
         <div class="field">
           <button class="btn" id="btnNotify">开启回复通知</button>
@@ -289,7 +319,7 @@
 </div>
 
 <script src="pure-data.js?v=38"></script>
-<script src="engine.js?v=38"></script>
-<script src="app.js?v=36"></script>
+<script src="engine.js?v=39"></script>
+<script src="app.js?v=39"></script>
 </body>
 </html>

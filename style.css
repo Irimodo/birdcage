@@ -341,7 +341,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 /* ---------- 历史抽屉 ---------- */
 .drawer {
   position: absolute; top: 0; right: 0; bottom: 0;
-  width: 560px; z-index: 27;
+  width: 560px; z-index: 37;
   background: rgba(10,8,7,.99);
   border-left: 1px solid rgba(200,169,122,.3);
   display: none; flex-direction: column;
@@ -387,6 +387,18 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   background: rgba(200,169,122,.55); border-radius: 5px;
 }
 #histLog { scroll-behavior: auto; }
+.drawer-x.warn { color: #e7b3a8; border-color: rgba(231,179,168,.45); margin-left: auto; margin-right: 8px; }
+.drawer-x.warn:hover { color: #ffd9d3; border-color: rgba(255,217,211,.7); }
+
+/* 设置里的线上聊天外观 */
+.look-row { display: flex; align-items: center; gap: 14px; }
+.look-prev {
+  width: 108px; height: 68px; flex: none;
+  border-radius: 6px; border: 1px solid rgba(200,169,122,.3);
+  background: #1a1714 center/cover no-repeat;
+}
+.look-prev.look-ava { width: 68px; height: 68px; border-radius: 50%; background-size: cover; }
+.look-btns { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 
 /* 记忆抽屉 */
 .memdrawer { width: 620px; }
@@ -423,7 +435,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 /* ---------- 设置面板 ---------- */
 .panel {
   position: absolute; top: 0; right: -400px; bottom: 0;
-  width: 400px; z-index: 30;
+  width: 400px; z-index: 36;
   background: rgba(13,10,9,.98);
   border-left: 1px solid rgba(200,169,122,.3);
   transition: right .3s ease;
@@ -489,7 +501,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 
 /* 遮罩（面板打开时）不铺满，只压住舞台边角 */
 .scrim {
-  position: absolute; inset: 0; z-index: 25;
+  position: absolute; inset: 0; z-index: 33;
   background: rgba(0,0,0,.35);
   opacity: 0; pointer-events: none; transition: opacity .25s;
 }
@@ -497,7 +509,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 
 /* 载入 */
 .splash {
-  position: absolute; inset: 0; z-index: 40;
+  position: absolute; inset: 0; z-index: 60;
   display: grid; place-items: center;
   background: #0a0908;
   transition: opacity .6s ease;
@@ -513,7 +525,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   border: 1px solid rgba(200,169,122,.4);
   color: #e0d3c0; font-size: 13px;
   padding: 7px 14px; border-radius: 4px;
-  opacity: 0; transition: .25s; z-index: 35;
+  opacity: 0; transition: .25s; z-index: 41;
   max-width: 520px; text-align: center;
 }
 .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -529,8 +541,32 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   font-size: 17px;
 }
 .online.show { display: flex; }
+/* 自定义壁纸：垫在最底层，压一层暗色保证字看得清 */
+.line-wall {
+  position: absolute; inset: 0; z-index: 0;
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+  opacity: 0; transition: opacity .25s ease;
+  pointer-events: none;
+}
+.online.has-wall .line-wall { opacity: 1; }
+.online.has-wall .line-wall::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(10,9,8,.55), rgba(10,9,8,.38) 35%, rgba(10,9,8,.62));
+}
+.online.has-wall .line-body { background: transparent; }
+.online.has-wall .bubble {
+  background: rgba(26,23,19,.82);
+  backdrop-filter: blur(3px);
+  border-color: rgba(200,169,122,.22);
+}
+.online.has-wall .brow.me .bubble {
+  background: linear-gradient(180deg, rgba(111,143,87,.92), rgba(92,122,71,.92));
+  border-color: rgba(160,200,120,.34);
+}
+.online.has-wall .bava { box-shadow: 0 0 0 2px rgba(10,9,8,.55); }
 
 .line-head {
+  position: relative; z-index: 2;
   flex: none; height: calc(62px + var(--safe-top-local, 0px));
   display: flex; align-items: center; gap: 10px;
   padding: var(--safe-top-local, 0px) 12px 0;
@@ -551,6 +587,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 .line-ico { flex: none; color: #9a8d7c; font-size: 20px; }
 
 .line-body {
+  position: relative; z-index: 1;
   flex: 1; min-height: 0;
   overflow-y: auto;
   padding: 14px 12px 8px;
@@ -589,6 +626,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 .brow.typing .bubble { color: #8e8272; letter-spacing: .2em; }
 
 .line-composer {
+  position: relative; z-index: 2;
   flex: none; display: flex; align-items: center; gap: 8px;
   padding: 8px 10px 10px;
   background: #14120f;
@@ -808,4 +846,12 @@ body.touch .hdel {
   top: -8px;
   font-size: 26px;
   color: rgba(255, 237, 237, .62);
+}
+
+.brow.sys { justify-content: center; padding: 2px 0; }
+.brow.sys .bubble.sys {
+  background: rgba(0,0,0,.32); border: 1px dashed rgba(200,169,122,.28);
+  color: rgba(236,226,208,.6); font-size: 12px; line-height: 1.5;
+  padding: 6px 12px; border-radius: 8px; max-width: 78%;
+  backdrop-filter: blur(2px);
 }

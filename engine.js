@@ -42,6 +42,17 @@ const TURN_LOCK = `【回合边界 · 最高优先】只演这一轮：实雪说
 
 const TURN_LOCK_TAIL = `【回合边界 · 回复前最后检查】只写帳这一轮的一次反应，不替实雪说下一句、不替她做下一个动作，也不要自己继续往下演第二轮；写完就停，让她接话。`;
 
+const ONLINE_LOCK = `【线上模式 · 你不是面对面（最高优先）】
+你现在不是在待宵亭，也不是在她身边；你是在手机上给实雪发消息。她看不到你的表情和动作，也听不到你的声音，你递东西、摸头、拉她的手，她全都收不到。
+1. 只能写你发出去的消息本身：日文在前，紧跟（中文意思），一条一行，短句、口语，像真人发 LINE。一条通常一两句，一次最多 5 条。
+2. 绝对不写动作、神态、心理、旁白，不写全角括号里的心声，不写「」把台词包起来，不写 @@STATE / @@MEMO 等控制行。
+3. 不能假定她就在旁边：不要写“抬头看她”“她脸红”“我握住她的手”“把茶推到她面前”这类只有面对面才成立的事。想表达关心就用文字问、用文字说。
+4. 消息有延迟：她可能过一会儿才看到、才回，也可能只回很短一句。不要因为她没秒回就追问、发脾气或写“你怎么不回”。
+5. 可以提到刚才面对面说过的话（“さっき会ったとき”“今日言ってたよな”），但那是回忆，不是你现在看得到她。
+6. 线上只发消息，不报场景、不换背景、不点表情；这些都不存在。`;
+
+const ONLINE_TAIL = `【线上 · 回复前最后检查】这是手机消息，不是当面说话：只发消息文本，不写动作、旁白、心声，不假定她就在你眼前；短句、最多 5 条，写完停手等她回。`;
+
 const TIMELINE_BLOCKS = {
   A: '【时间锚点 A · 待宵亭的日常】实雪仍在咖啡屋『待宵亭』用「樱」这个名字当女招待还债。婚约在法律上已经取消，但帐每天都会来店里。送礼骚扰与红酒事件已经发生，谁送的还不知道。绑架事件尚未发生。',
   B: '【时间锚点 B · 车内的邀请】已经查明「橘八寻」这个律师并不存在。帐第二次要实雪住进雅乐代家，她拒绝了。帐与平井镜太郎已经和解、互称名字。绑架事件尚未发生。',
@@ -553,6 +564,27 @@ function readPersona(key) {
   const f = PERSONA_FILES[key] || '';
   return (FS.personas && FS.personas[f]) || '';
 }
+/* 两条线互通：线上提示词里带上刚才面对面说过的话，线下也带上刚发过的消息。
+   只作衔接，不给例句，避免模型把另一条线的格式搬过来。 */
+function crossChannelText(channel) {
+  const other = channel === 'online' ? 'offline' : 'online';
+  const h = loadHistory();
+  const arr = (h[other] || []).filter((x) => x && x.text && (x.role === 'user' || x.role === 'assistant'));
+  if (!arr.length) return '';
+  const lines = arr.slice(-6).map((x) => {
+    let t = String(x.text).replace(/@@[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+    if (x.role === 'assistant') t = cleanAssistantForPrompt(t);
+    if (t.length > 80) t = t.slice(0, 80) + '…';
+    return (x.role === 'user' ? '実雪：' : '帳：') + t;
+  }).filter((s) => !/^(?:実雪：|帳：)$/.test(s));
+  if (!lines.length) return '';
+  if (channel === 'online') {
+    return '【刚才面对面说过的话（线下）·只作衔接】\n' + lines.join('\n') +
+      '\n这些是你们刚才见面时说过的话。可以自然地记起、提起（例如「さっき会ったとき言ってたよな」「今日、店で」），但不要照抄当时的长旁白，也不要假装你现在看得到她。';
+  }
+  return '【刚才在手机上发过的消息（线上）·只作衔接】\n' + lines.join('\n') +
+    '\n这些是你们刚才在聊天软件里说过的话。可以自然地提起（例如「さっきメッセージで言ってたな」「线上说过的」），但不要沿用手机消息那种一行一句的格式，也不要假装还在看手机。';
+}
 function buildSystemBlocks(cfg, channel, pov) {
   const st = loadState();
   const bg = bgLabel(st.background);
@@ -560,21 +592,25 @@ function buildSystemBlocks(cfg, channel, pov) {
   const charBg = bgItem(st.bg_char) ? st.bg_char : st.background;
   const userLabel = bgLabel(userBg);
   const charLabel = bgLabel(charBg);
-  const scene = '【当前时间】' + nowText() + '（用户本地时间）\n' +
-    '【当前场景】画面背景=' + st.background + '（' + bg + '）；表情=' + st.expression + '；BGM=' + st.bgm + '；CG=' + (st.cg || '无') + '\n' +
-    '【当前各自位置】実雪=' + userBg + '（' + userLabel + '）；帳=' + charBg + '（' + charLabel + '）；' +
-    (st.apart ? '两人现在分开，不在同一地点。' : '两人现在在同一地点。') + '\n' +
-    '【地点性质（必须遵守）】' + scenePlaceNote(st.background, bg);
+  const scene = channel === 'online'
+    ? '【当前时间】' + nowText() + '（用户本地时间）\n' +
+      '【当前距离】你们现在不在同一个地方。她在她那边看手机，你在你这边发消息；你看不见她的表情，她也不在你身边。'
+    : '【当前时间】' + nowText() + '（用户本地时间）\n' +
+      '【当前场景】画面背景=' + st.background + '（' + bg + '）；表情=' + st.expression + '；BGM=' + st.bgm + '；CG=' + (st.cg || '无') + '\n' +
+      '【当前各自位置】実雪=' + userBg + '（' + userLabel + '）；帳=' + charBg + '（' + charLabel + '）；' +
+      (st.apart ? '两人现在分开，不在同一地点。' : '两人现在在同一地点。') + '\n' +
+      '【地点性质（必须遵守）】' + scenePlaceNote(st.background, bg);
   const mem = pickMemory(Number((cfg.prompt || {}).memory_top_n || 12));
   const memText = mem.length ? '【长期记忆】\n' + mem.map((x) => '- (' + (x.t || '') + ') ' + (x.text || '')).join('\n') : '【长期记忆】暂无';
+  const crossText = crossChannelText(channel);
   const blocks = [
     LANGUAGE_LOCK,
     TURN_LOCK,
-    (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText,
+    (channel === 'online' ? ONLINE_LOCK : ''),
+    (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText, crossText,
     manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
-  if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');
-  if (channel !== 'online') {
+  if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');  if (channel !== 'online') {
     const sc = pendingScene();
     if (sc && sc.bg) {
       if (sc.preview) {
@@ -636,6 +672,7 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
   });
   msgs.splice(msgs.length - 1, 0, { role: 'system', content: LANGUAGE_LOCK_TAIL });
   msgs.splice(msgs.length - 1, 0, { role: 'system', content: TURN_LOCK_TAIL });
+  if (channel === 'online') msgs.splice(msgs.length - 1, 0, { role: 'system', content: ONLINE_TAIL });
   return msgs;
 }
 
@@ -1174,6 +1211,7 @@ async function request(url, opt) {
       const h = loadHistory();
       h[ch] = [];
       writeRaw(HIST_KEY, h);
+      if (ch === 'online') setSummaryCounter(0);
       return { ok: true, history: [] };
     }
     if (path === '/api/reset') { return { ok: true, state: resetState() }; }
