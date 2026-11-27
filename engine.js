@@ -52,6 +52,9 @@ const ONLINE_LOCK = `【线上模式 · 你不是面对面（最高优先）】
 6. 线上只发消息，不报场景、不换背景、不点表情；这些都不存在。`;
 
 const ONLINE_TAIL = `【线上 · 回复前最后检查】这是手机消息，不是当面说话：只发消息文本，不写动作、旁白、心声，不假定她就在你眼前；短句、最多 5 条，写完停手等她回。`;
+const OFFLINE_TAIL = `【线下 · 回复前最后检查】现在是面对面，手机收着：不写收到消息、手机震动、低头看屏幕，也不要把手机上的聊天当成正在发生的事；台词照旧是「旁白＋对话」，不是一行一条的聊天短句。他这一轮说过要去哪里（例如去学校），就按那个行程走，不要过两句话又推门回来，除非她明确叫他回来。`;
+
+const ALIAS_RULE = `【称呼硬规则】她打工的店『待宵亭』里，她用「樱／桜」这个名字。店里、街上、任何有旁人在的场合，客人、同事、帳都叫她「桜」，不要叫「実雪」；只有两个人私下独处时，才是「実雪」。写错称呼比写错台词更出戏。`;
 
 const TIMELINE_BLOCKS = {
   A: '【时间锚点 A · 待宵亭的日常】实雪仍在咖啡屋『待宵亭』用「樱」这个名字当女招待还债。婚约在法律上已经取消，但帐每天都会来店里。送礼骚扰与红酒事件已经发生，谁送的还不知道。绑架事件尚未发生。',
@@ -564,26 +567,39 @@ function readPersona(key) {
   const f = PERSONA_FILES[key] || '';
   return (FS.personas && FS.personas[f]) || '';
 }
-/* 两条线互通：线上提示词里带上刚才面对面说过的话，线下也带上刚发过的消息。
-   只作衔接，不给例句，避免模型把另一条线的格式搬过来。 */
+/* 两条线互通：只当作「已经发生过的回忆」，压成几句内容摘要；
+   不给聊天记录那种一行一条的格式，避免模型把另一条线当成正在发生的事。 */
+function speechOnly(t, role) {
+  let s = String(t || '').replace(/@@[^\n]*/g, '');
+  const quoted = Array.from(s.matchAll(/「([^」]{1,140})」/g)).map((m) => m[1]);
+  if (quoted.length) s = quoted.join(' / ');
+  else s = s.replace(/（[^）]*）/g, ' ').replace(/\([^)]*\)/g, ' ');
+  return s.replace(/[\s\u3000]+/g, ' ').trim();
+}
 function crossChannelText(channel) {
   const other = channel === 'online' ? 'offline' : 'online';
   const h = loadHistory();
   const arr = (h[other] || []).filter((x) => x && x.text && (x.role === 'user' || x.role === 'assistant'));
   if (!arr.length) return '';
-  const lines = arr.slice(-6).map((x) => {
-    let t = String(x.text).replace(/@@[^\n]*/g, '').replace(/\s+/g, ' ').trim();
-    if (x.role === 'assistant') t = cleanAssistantForPrompt(t);
-    if (t.length > 80) t = t.slice(0, 80) + '…';
-    return (x.role === 'user' ? '実雪：' : '帳：') + t;
-  }).filter((s) => !/^(?:実雪：|帳：)$/.test(s));
-  if (!lines.length) return '';
-  if (channel === 'online') {
-    return '【刚才面对面说过的话（线下）·只作衔接】\n' + lines.join('\n') +
-      '\n这些是你们刚才见面时说过的话。可以自然地记起、提起（例如「さっき会ったとき言ってたよな」「今日、店で」），但不要照抄当时的长旁白，也不要假装你现在看得到她。';
+  const picked = [];
+  for (const x of arr.slice(-6)) {
+    // 线下只带她说过的内容：他自己那几条聊天短句没必要复述，还容易被照搬成一行一条。
+    if (channel !== 'online' && x.role !== 'user') continue;
+    let t = speechOnly(x.text, x.role).replace(/[「」『』]/g, '');
+    if (!t) continue;
+    if (t.length > 60) t = t.slice(0, 60) + '…';
+    picked.push((x.role === 'user' ? '- 她说：「' : '- 你回：「') + t + '」');
+    if (picked.length >= 3) break;
   }
-  return '【刚才在手机上发过的消息（线上）·只作衔接】\n' + lines.join('\n') +
-    '\n这些是你们刚才在聊天软件里说过的话。可以自然地提起（例如「さっきメッセージで言ってたな」「线上说过的」），但不要沿用手机消息那种一行一句的格式，也不要假装还在看手机。';
+  if (!picked.length) return '';
+  if (channel === 'online') {
+    return '【更早见面时说过的话（已经结束 · 只是回忆）】\n' + picked.join('\n') +
+      '\n这件事已经过去了，你们现在各自在别处发消息。想提就一句带过（「さっき会ったとき言ってたよな」），' +
+      '不要重演当时的场面，不要写动作，也不要假装你现在看得到她。';
+  }
+  return '【更早的手机聊天（已经结束 · 只是背景）】\n' + picked.join('\n') +
+    '\n那段聊天已经结束了，你们现在是面对面，手机不在手上。不要写成“又收到一条消息／手机震动／低头看屏幕”，' +
+    '也不要把这些当成刚刚还在进行；要提只用一句带过（「さっきメッセージで言ってたよな」），不要照搬当时的短句格式。';
 }
 function buildSystemBlocks(cfg, channel, pov) {
   const st = loadState();
@@ -607,7 +623,7 @@ function buildSystemBlocks(cfg, channel, pov) {
     LANGUAGE_LOCK,
     TURN_LOCK,
     (channel === 'online' ? ONLINE_LOCK : ''),
-    (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), relationRules(cfg), readPersona('user'), memText, crossText,
+    (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), ALIAS_RULE, relationRules(cfg), readPersona('user'), memText, crossText,
     manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');  if (channel !== 'online') {
@@ -673,6 +689,7 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
   msgs.splice(msgs.length - 1, 0, { role: 'system', content: LANGUAGE_LOCK_TAIL });
   msgs.splice(msgs.length - 1, 0, { role: 'system', content: TURN_LOCK_TAIL });
   if (channel === 'online') msgs.splice(msgs.length - 1, 0, { role: 'system', content: ONLINE_TAIL });
+  else msgs.splice(msgs.length - 1, 0, { role: 'system', content: OFFLINE_TAIL });
   return msgs;
 }
 
