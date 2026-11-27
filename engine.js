@@ -23,7 +23,7 @@ const DEFAULT_CONFIG = {
   },
   timeline: 'A',
   timeline_custom: '',
-  prompt: { max_chars: 34000, history_turns: 12, memory_top_n: 12, summary_every: 30 },
+  prompt: { max_chars: 60000, history_turns: 12, memory_top_n: 12, summary_every: 30 },
   features: { web_search: false, attachments: true },
 };
 
@@ -213,6 +213,13 @@ async function ensureInit() {
       if (cfg.api) { cfg.api.key = ''; cfg.api.has_key = false; }
       if (cfg.features) cfg.features.web_search = false;
       writeRaw(CFG_KEY, cfg);
+    } else {
+      // 旧版默认 34000 是全包预算，被人设占满导致历史清零；老存档顺手抬到 60000。
+      const cur = readRaw(CFG_KEY, null) || {};
+      if (cur.prompt && Number(cur.prompt.max_chars) === 34000) {
+        cur.prompt.max_chars = 60000;
+        writeRaw(CFG_KEY, cur);
+      }
     }
     if (readRaw(STATE_KEY, null) === null) writeRaw(STATE_KEY, deepMerge(STATE_DEFAULT, FS.seed.state || {}));
     if (readRaw(MEM_KEY, null) === null) writeRaw(MEM_KEY, Array.isArray(FS.seed.memory) ? FS.seed.memory : []);
@@ -676,31 +683,40 @@ function buildMessages(cfg, userText, extraSystem, channel, pov) {
   const blocks = buildSystemBlocks(cfg, channel, pov);
   if (extraSystem) blocks.unshift(extraSystem);
   const turns = Number((cfg.prompt || {}).history_turns || 12);
-  const msgs = [{ role: 'system', content: blocks.join('\n\n') }].concat(recentHistory(turns, channel, relationStage(cfg)));
-  msgs.push({ role: 'user', content: userText });
-  const budget = Number((cfg.prompt || {}).max_chars || 24000);
-  let total = msgs.reduce((n, m) => n + String(m.content || '').length, 0);
-  // 历史末尾必须是 assistant，否则会在 current user 前留下一条没被回答的 user，
-  // 模型可能把它和当前这条一起回答，看起来就像“复读上上轮”。
-  while (msgs.length > 2 && msgs[msgs.length - 2].role === 'user') {
-    total -= String(msgs[msgs.length - 2].content || '').length;
-    msgs.splice(msgs.length - 2, 1);
+  const sysText = blocks.join('\n\n');
+  // 只裁剪历史，系统提示词一律完整保留：以前预算把 system 也算进去，
+  // 人设+总纲已经占满上限，历史被删到 0 条，看起来就像失忆、复读上一轮。
+  let hist = recentHistory(turns, channel, relationStage(cfg)).slice();
+  // 断档修复：连续两条 user（上次生成失败/被删）只留后一条，否则模型会去回答那条没人回的话。
+  hist = hist.reduce((acc, m) => {
+    if (m.role === 'user' && acc.length && acc[acc.length - 1].role === 'user') acc[acc.length - 1] = m;
+    else acc.push(m);
+    return acc;
+  }, []);
+  while (hist.length && hist[hist.length - 1].role === 'user') hist.pop();
+  const budget = Number((cfg.prompt || {}).max_chars || 60000);
+  const histCap = Math.max(6000, Math.min(16000, budget - String(sysText).length));
+  const hlen = () => hist.reduce((n, m) => n + String(m.content || '').length, 0);
+  // 按“一整轮”删，但最近 6 条（3 轮）无条件保留，保证至少记得刚才说了什么。
+  while (hlen() > histCap && hist.length > 6) {
+    if (hist[0].role === 'user' && hist[1] && hist[1].role === 'assistant') hist = hist.slice(2);
+    else hist = hist.slice(1);
   }
-  // 超出预算时按“一整轮”删，不要只删半轮，避免留下孤立的 user 消息。
-  while (total > budget && msgs.length > 3) {
-    const a = msgs[1], b = msgs[2];
-    if (a && a.role === 'user' && b && b.role === 'assistant') {
-      total -= String(a.content || '').length + String(b.content || '').length;
-      msgs.splice(1, 2);
+  // 还超就压最旧那条的正文，不要动当前这条。
+  let over = hlen() - histCap;
+  while (over > 0 && hist.length > 2) {
+    const first = hist[0];
+    const keep = Math.max(120, String(first.content).length - over);
+    if (keep < String(first.content).length) {
+      over -= String(first.content).length - keep;
+      hist[0] = { role: first.role, content: String(first.content).slice(0, keep) + '…' };
     } else {
-      total -= String(a.content || '').length;
-      msgs.splice(1, 1);
+      over -= String(first.content).length;
+      hist = hist.slice(1);
     }
   }
-  if (total > budget) {
-    const over = total - budget;
-    msgs[msgs.length - 1].content = msgs[msgs.length - 1].content.slice(0, Math.max(200, msgs[msgs.length - 1].content.length - over));
-  }
+  const msgs = [{ role: 'system', content: sysText }].concat(hist);
+  msgs.push({ role: 'user', content: userText });
   // 紧贴当前 user 放一条最新消息锚点：历史只当背景，别把更早的 user 当成待回答的问题。
   msgs.splice(msgs.length - 1, 0, {
     role: 'system',
