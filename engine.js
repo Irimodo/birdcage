@@ -54,6 +54,10 @@ const ONLINE_LOCK = `【线上模式 · 你不是面对面（最高优先）】
 const ONLINE_TAIL = `【线上 · 回复前最后检查】这是手机消息，不是当面说话：只发消息文本，不写动作、旁白、心声，不假定她就在你眼前；短句、最多 5 条，写完停手等她回。`;
 const OFFLINE_TAIL = `【线下 · 回复前最后检查】现在是面对面，手机收着：不写收到消息、手机震动、低头看屏幕，也不要把手机上的聊天当成正在发生的事；台词照旧是「旁白＋对话」，不是一行一条的聊天短句。他这一轮说过要去哪里（例如去学校），就按那个行程走，不要过两句话又推门回来，除非她明确叫他回来。`;
 
+const CAST_RULE = `【在场人物硬规则（优先于配角的出场限制）】
+1. 实雪在消息或括号里点名说谁在场（例如“镜太郎怎么在这”“香穗留来了”），那个人就必须真的出现、由他说话：不能换成别的角色，也不能只让无名路人顶替。她已经把人带到场，所谓“出场地点限制”就不再适用，也不要把这当成“凭空冒出来”。
+2. 她没点名时照旧：鏡太郎只在她走出日常、真的撞见时出现，店里两个人的私密场合不要让他冒出来；暁和香穗留只在雅楽代本家、家宴或他们主动来找她时出现，不会出现在待宵亭、街上、公寓。
+3. 路人是路人：邻桌客人、店员就用具体身份写，不要拿配角的名字去当路人。`;
 const ALIAS_RULE = `【称呼硬规则】她打工的店『待宵亭』里，她用「樱／桜」这个名字。店里、街上、任何有旁人在的场合，客人、同事、帳都叫她「桜」，不要叫「実雪」；只有两个人私下独处时，才是「実雪」。写错称呼比写错台词更出戏。`;
 
 const TIMELINE_BLOCKS = {
@@ -624,7 +628,7 @@ function buildSystemBlocks(cfg, channel, pov) {
     TURN_LOCK,
     (channel === 'online' ? ONLINE_LOCK : ''),
     (channel === 'online' ? '' : povRules(pov || st.pov)), (channel === 'online' ? '' : presenceRules(st)), (channel === 'online' ? '' : ambientRules(bg)), readPersona('persona'), scene, timelineText(cfg), ALIAS_RULE, relationRules(cfg), readPersona('user'), memText, crossText,
-    manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '',
+    manifestDigest(cfg), readPersona('story'), (FS.rules && FS.rules.format) || '', CAST_RULE,
   ];
   if (channel === 'online') blocks.push((FS.rules && FS.rules.online) || '');  if (channel !== 'online') {
     const sc = pendingScene();
