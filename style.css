@@ -551,19 +551,73 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 .online.has-wall .line-wall { opacity: 1; }
 .online.has-wall .line-wall::after {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(10,9,8,.55), rgba(10,9,8,.38) 35%, rgba(10,9,8,.62));
+  background: linear-gradient(180deg, rgba(8,7,6,.16), rgba(8,7,6,.04) 38%, rgba(8,7,6,.22));
 }
 .online.has-wall .line-body { background: transparent; }
 .online.has-wall .bubble {
-  background: rgba(26,23,19,.82);
-  backdrop-filter: blur(3px);
-  border-color: rgba(200,169,122,.22);
+  background: rgba(30,27,22,.66);
+  backdrop-filter: blur(8px) saturate(1.05);
+  border-color: rgba(200,169,122,.26);
 }
 .online.has-wall .brow.me .bubble {
-  background: linear-gradient(180deg, rgba(111,143,87,.92), rgba(92,122,71,.92));
-  border-color: rgba(160,200,120,.34);
+  background: linear-gradient(180deg, rgba(126,158,99,.86), rgba(104,134,80,.86));
+  border-color: rgba(180,215,140,.4);
 }
-.online.has-wall .bava { box-shadow: 0 0 0 2px rgba(10,9,8,.55); }
+.online.has-wall .bava { box-shadow: 0 0 0 2px rgba(10,9,8,.3); }
+
+/* 浅色聊天主题：没设壁纸时默认用它；壁纸本身偏亮时也用它。
+   深色壁纸（暗景）才会回到深色顶栏和气泡。 */
+.online.wall-light .line-body {
+  background:
+    radial-gradient(1200px 520px at 50% 0%, rgba(255,255,255,.55), transparent 70%),
+    linear-gradient(180deg, #f7f2e8, #efe8db 60%, #f3ede2);
+}
+.online.has-wall.wall-light .line-body { background: transparent; }
+
+.online.wall-light .line-head {
+  background: rgba(250,246,239,.92);
+  border-bottom-color: rgba(120,100,70,.2);
+}
+.online.wall-light .line-name { color: #2e271e; }
+.online.wall-light .line-sub { color: #8a7c68; }
+.online.wall-light .line-back, .online.wall-light .line-ico { color: #6d6151; }
+.online.wall-light .bubble {
+  background: rgba(255,253,247,.94);
+  border-color: rgba(150,125,90,.26);
+  color: #2b241b;
+}
+.online.wall-light .bubble.inner { background: rgba(240,236,227,.94); color: #6d6252; }
+.online.wall-light .brow.me .bubble {
+  background: linear-gradient(180deg, rgba(143,182,115,.95), rgba(121,160,95,.95));
+  border-color: rgba(110,150,85,.35);
+  color: #f7faf3;
+}
+.online.wall-light .bava { border-color: rgba(150,125,90,.35); }
+.online.wall-light .line-composer {
+  background: rgba(250,246,239,.92);
+  border-top-color: rgba(120,100,70,.2);
+}
+.online.wall-light .line-plus {
+  background: rgba(255,255,255,.9);
+  border-color: rgba(120,100,70,.28);
+  color: #6d6151;
+}
+.online.wall-light .line-composer input[type=text] {
+  background: rgba(255,255,255,.92);
+  border-color: rgba(120,100,70,.26);
+  color: #2b241b;
+}
+.online.wall-light .line-composer input:focus { border-color: rgba(120,100,70,.55); }
+.online.wall-light .line-hint { color: #7a6c58; background: rgba(250,246,239,.92); }
+.online.wall-light .line-hint.on { color: #7a6c58; }
+.online.wall-light .line-send {
+  background: linear-gradient(180deg, #8fb673, #79a05f);
+  color: #12200a;
+}
+.online.wall-light .line-send.retry-on {
+  background: linear-gradient(180deg, #d9b478, #c39a5f);
+  color: #2b1c08;
+}
 
 .line-head {
   position: relative; z-index: 2;
@@ -592,8 +646,8 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   overflow-y: auto;
   padding: 14px 12px 8px;
   background:
-    radial-gradient(1200px 500px at 50% 0%, rgba(200,169,122,.05), transparent 70%),
-    #0e0d0b;
+    radial-gradient(1200px 520px at 50% 0%, rgba(214,186,140,.09), transparent 72%),
+    linear-gradient(180deg, #1a1712, #131110 60%, #171411);
 }
 .brow { display: flex; align-items: flex-end; gap: 8px; margin: 8px 0; }
 .brow.me { justify-content: flex-end; }
@@ -628,7 +682,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
 .line-composer {
   position: relative; z-index: 2;
   flex: none; display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px 10px;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   background: #14120f;
   border-top: 1px solid rgba(200,169,122,.18);
 }
@@ -648,7 +702,7 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   color: #cfc4b2; font-size: 17px; cursor: pointer; flex: none;
 }
 .line-retry {
-  display: none; flex: none; padding: 8px 12px; border-radius: 16px;
+  display: none !important; flex: none; padding: 8px 12px; border-radius: 16px;
   background: rgba(200,169,122,.14);
   border: 1px solid rgba(200,169,122,.5);
   color: #c8a97a; font: inherit; font-size: 14px; cursor: pointer;
@@ -660,6 +714,10 @@ body.timeline-e .sprite { height: 75% !important; background-size: auto 100% !im
   border: 0; color: #10210c; font: inherit; font-size: 16px; cursor: pointer;
 }
 .line-send:disabled { filter: grayscale(.5) brightness(.7); }
+.line-send.retry-on {
+  background: linear-gradient(180deg, rgba(200,169,122,.95), rgba(170,138,95,.95));
+  color: #23190d;
+}
 .line-hint {
   flex: none; height: 0; overflow: hidden; text-align: center;
   font-size: 12px; color: #8e8272; background: #14120f;

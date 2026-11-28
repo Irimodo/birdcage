@@ -914,6 +914,8 @@ async function pat(zone) {
   S.busy = true;
   btnSend.disabled = true;
   btnSend.textContent = '…';
+  const ls = $('#lineSend');
+  if (ls) { ls.disabled = true; ls.textContent = '…'; }
   try {
     const res = await getJSON('/api/chat', {
       method: 'POST',
@@ -946,6 +948,7 @@ async function pat(zone) {
     S.busy = false;
     btnSend.disabled = false;
     btnSend.textContent = '发送';
+    updateRetryBtn();
     updateRetryBtn();
   }
 }
@@ -1028,17 +1031,23 @@ function enqueue() {
 const retryBtn = $('#btnRetry');
 const lineRetry = $('#lineRetry');
 function updateRetryBtn() {
-  const btns = [retryBtn, lineRetry].filter(Boolean);
   const arr = S.mode === 'online' ? S.histOnline : S.histOffline;
   const last = arr && arr.length ? arr[arr.length - 1] : null;
   const canRegen = !S.busy && !S.queue.length && last && last.role === 'assistant';
   if (S.retry) {
-    btns.forEach((b) => { b.textContent = '重试'; b.classList.add('show'); });
+    if (retryBtn) { retryBtn.textContent = '重试'; retryBtn.classList.add('show'); }
   } else if (canRegen) {
-    btns.forEach((b) => { b.textContent = '重来'; b.classList.add('show'); });
-  } else {
-    btns.forEach((b) => b.classList.remove('show'));
+    if (retryBtn) { retryBtn.textContent = '重来'; retryBtn.classList.add('show'); }
+  } else if (retryBtn) {
+    retryBtn.classList.remove('show');
   }
+  // 线上：重来/重试直接长在发送键上，底部不再多一个点不到的按钮。
+  const s = $('#lineSend');
+  if (!s) return;
+  const typing = ($('#lineInput').value || '').trim().length > 0;
+  const usable = (!!S.retry || canRegen) && !typing && !S.busy;
+  s.classList.toggle('retry-on', usable);
+  s.textContent = usable ? (S.retry ? '重试' : '重来') : '送信';
 }
 
 async function sendChat(payload) {
@@ -1096,6 +1105,7 @@ async function sendChat(payload) {
     S.busy = false;
     btnSend.disabled = false;
     btnSend.textContent = '发送';
+    updateRetryBtn();
     updateRetryBtn();
     if (S.mode === 'online') $('#lineInput').focus(); else inputEl.focus();
   }
@@ -1276,11 +1286,40 @@ function updateLookPreview() {
   if (bc) bc.hidden = !S.look.bg;
   if (ac) ac.hidden = !S.look.ava;
 }
+/* 壁纸是亮是暗，决定顶栏/气泡用浅色还是深色；不然亮壁纸上压一整条黑框，就像暗黑模式 */
+function measureWall(url, done) {
+  if (!url) { done(null); return; }
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0, 16, 16);
+      const d = g.getImageData(0, 0, 16, 16).data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      done(sum / (d.length / 4) / 255);
+    } catch (e) { done(null); }
+  };
+  img.onerror = () => done(null);
+  img.src = url;
+}
 function applyOnlineLook() {
   const wall = $('#lineWall');
   const online = $('#online');
   if (wall) wall.style.backgroundImage = S.look.bg ? 'url("' + S.look.bg + '")' : '';
-  if (online) online.classList.toggle('has-wall', !!S.look.bg);
+  if (online) {
+    online.classList.toggle('has-wall', !!S.look.bg);
+    if (S.look.bg) {
+      const url = S.look.bg;
+      measureWall(url, (lum) => {
+        if (S.look.bg !== url) return;
+        online.classList.toggle('wall-light', lum !== null && lum > 0.62);
+      });
+    } else {
+      // 没设壁纸：默认就走浅色聊天纸，别再默认压成黑底
+      online.classList.add('wall-light');
+    }
+  }
   paintAvatar();
   paintLineAvatars();
   updateLookPreview();
@@ -1474,12 +1513,17 @@ $('#btnMode').onclick = () => setMode(S.mode === 'online' ? 'offline' : 'online'
 $('#lineBack').onclick = () => setMode('offline');
 $('#lineSend').onclick = () => {
   const t = $('#lineInput').value.trim();
-  if (!t) return;
+  if (!t) {
+    // 输入框空着、按钮正显示「重来/重试」时，点它就是重来，不用再去够下面的小按钮。
+    if (!S.busy && $('#lineSend').classList.contains('retry-on')) onRetryClick();
+    return;
+  }
   inputEl.value = t;          // 复用同一套连发逻辑
   $('#lineInput').value = '';
   enqueue();
 };
 $('#linePlus').onclick = () => $('#file').click();
+$('#lineInput').addEventListener('input', updateRetryBtn);
 $('#lineHint').onclick = () => flushQueue();
 $('#lineInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#lineSend').click(); }
